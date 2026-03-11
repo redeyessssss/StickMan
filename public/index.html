@@ -229,14 +229,16 @@ canvas { position:absolute; top:0; left:0; display:block; }
 
 @media(max-width:700px) and (orientation:portrait) {
   #orientationPrompt { display:flex !important; }
-  #gc { display:none; }
+  #gc { display:none !important; }
 }
 @media(max-width:900px) and (orientation:landscape) {
   #mctrl { display:flex !important; }
   #chint { display:none !important; }
+  #gc { display:block !important; }
 }
 @media(min-width:901px) {
   #mctrl { display:none !important; }
+  #gc { display:block !important; }
 }
 </style>
 </head>
@@ -367,6 +369,13 @@ canvas { position:absolute; top:0; left:0; display:block; }
     <div class="rotate-icon">📱</div>
     <div style="font-size:1.5rem;font-weight:700;margin-bottom:0.5rem;">Rotate Your Device</div>
     <div style="font-size:1rem;color:#aaa;">Please rotate to landscape mode for the best experience</div>
+  </div>
+
+  <!-- LOADING INDICATOR -->
+  <div id="loadingIndicator" style="position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10000;color:#fff;">
+    <div style="font-size:3rem;margin-bottom:1rem;">⚔️</div>
+    <div style="font-size:1.5rem;font-weight:700;">Loading Stick Fight...</div>
+    <div style="font-size:1rem;color:#aaa;margin-top:0.5rem;">Please wait</div>
   </div>
 
   <!-- RESULT -->
@@ -684,22 +693,30 @@ var DAILY_CHALLENGES = [
 
 // Load saved data
 function loadPlayerData() {
-  var saved = localStorage.getItem('stickFightData');
-  if (saved) {
-    var data = JSON.parse(saved);
-    playerData = Object.assign(playerData, data);
-    // Unlock purchased items
-    for (var char in CHARACTERS) {
-      if (playerData['char_'+char]) CHARACTERS[char].unlocked = true;
+  try {
+    var saved = localStorage.getItem('stickFightData');
+    if (saved) {
+      var data = JSON.parse(saved);
+      playerData = Object.assign(playerData, data);
+      // Unlock purchased items
+      for (var char in CHARACTERS) {
+        if (playerData['char_'+char]) CHARACTERS[char].unlocked = true;
+      }
+      for (var weap in WEAPONS) {
+        if (playerData['weap_'+weap]) WEAPONS[weap].unlocked = true;
+      }
     }
-    for (var weap in WEAPONS) {
-      if (playerData['weap_'+weap]) WEAPONS[weap].unlocked = true;
-    }
+  } catch(e) {
+    console.log('Error loading data:', e);
   }
 }
 
 function savePlayerData() {
-  localStorage.setItem('stickFightData', JSON.stringify(playerData));
+  try {
+    localStorage.setItem('stickFightData', JSON.stringify(playerData));
+  } catch(e) {
+    console.log('Error saving data:', e);
+  }
 }
 
 var canvas = document.getElementById('c');
@@ -707,7 +724,13 @@ var ctx = canvas.getContext('2d');
 var W, H, GY;
 
 // SOUND SYSTEM
-var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+var audioCtx = null;
+try {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+} catch(e) {
+  console.log('Audio not supported');
+}
+
 var sounds = {
   punch: function() { playTone(150, 0.05, 'square'); },
   kick: function() { playTone(120, 0.08, 'sawtooth'); },
@@ -727,17 +750,22 @@ var sounds = {
 };
 
 function playTone(freq, duration, type, delay) {
+  if (!audioCtx) return;
   setTimeout(function(){
-    var osc = audioCtx.createOscillator();
-    var gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.frequency.value = freq;
-    osc.type = type || 'sine';
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-    osc.start(audioCtx.currentTime);
-    osc.stop(audioCtx.currentTime + duration);
+    try {
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = freq;
+      osc.type = type || 'sine';
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + duration);
+    } catch(e) {
+      console.log('Audio error:', e);
+    }
   }, (delay || 0) * 1000);
 }
 
@@ -749,6 +777,14 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 loadPlayerData();
+
+// Add error logging for mobile debugging
+window.addEventListener('error', function(e) {
+  console.error('Global error:', e.message, e.filename, e.lineno);
+});
+
+// Log when page loads
+console.log('Game loaded, canvas size:', W, 'x', H);
 
 // Particles
 var ptc = document.getElementById('ptc');
@@ -3217,16 +3253,32 @@ for (var mi = 0; mi < mids.length; mi++) {
 
 // Force landscape orientation on mobile
 function checkOrientation() {
-  if (window.innerWidth < 700 && window.innerHeight > window.innerWidth) {
+  var isMobile = window.innerWidth < 700;
+  var isPortrait = window.innerHeight > window.innerWidth;
+  
+  if (isMobile && isPortrait) {
     // Portrait mode on mobile - show prompt
     document.getElementById('orientationPrompt').style.display = 'flex';
+    document.getElementById('gc').style.display = 'none';
   } else {
     document.getElementById('orientationPrompt').style.display = 'none';
+    document.getElementById('gc').style.display = 'block';
+    // Resize canvas when orientation changes
+    resize();
   }
+  
+  console.log('Orientation check:', {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    isMobile: isMobile,
+    isPortrait: isPortrait
+  });
 }
 
 window.addEventListener('resize', checkOrientation);
-window.addEventListener('orientationchange', checkOrientation);
+window.addEventListener('orientationchange', function() {
+  setTimeout(checkOrientation, 100);
+});
 checkOrientation();
 
 // Request fullscreen on mobile when game starts
@@ -3255,10 +3307,35 @@ document.addEventListener('touchstart', function() {
 // boot bg
 keys = {};
 (function(){
-  var sg = ctx.createLinearGradient(0,0,0,H);
-  sg.addColorStop(0,'#04000e'); sg.addColorStop(0.55,'#090018'); sg.addColorStop(1,'#0e0004');
-  ctx.fillStyle = sg; ctx.fillRect(0,0,W,H);
+  try {
+    var sg = ctx.createLinearGradient(0,0,0,H);
+    sg.addColorStop(0,'#04000e'); sg.addColorStop(0.55,'#090018'); sg.addColorStop(1,'#0e0004');
+    ctx.fillStyle = sg; ctx.fillRect(0,0,W,H);
+    console.log('Boot background rendered');
+  } catch(e) {
+    console.error('Boot render error:', e);
+  }
 })();
+
+// Enable audio on mobile after user interaction
+document.addEventListener('touchstart', function() {
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}, {once: true});
+
+// Hide loading indicator after everything is ready
+setTimeout(function() {
+  var loader = document.getElementById('loadingIndicator');
+  if (loader) {
+    loader.style.transition = 'opacity 0.5s';
+    loader.style.opacity = '0';
+    setTimeout(function() {
+      loader.style.display = 'none';
+    }, 500);
+  }
+  console.log('Stick Fight game ready!');
+}, 500);
 </script>
 </body>
 </html>
