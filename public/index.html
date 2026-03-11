@@ -6,7 +6,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
-<meta name="screen-orientation" content="landscape">
 <title>Stick Fight Web</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cinzel+Decorative:wght@400;700&display=swap');
@@ -212,33 +211,12 @@ canvas { position:absolute; top:0; left:0; display:block; }
 .btn-icon { font-size:1.5rem; margin-bottom:2px; }
 .btn-label { font-size:0.65rem; opacity:0.9; }
 
-/* Landscape orientation prompt */
-#orientationPrompt {
-  position:fixed; inset:0; background:#000;
-  display:none; flex-direction:column; align-items:center; justify-content:center;
-  z-index:9999; color:#fff; text-align:center; padding:2rem;
-}
-#orientationPrompt .rotate-icon {
-  font-size:5rem; margin-bottom:1rem;
-  animation:rotate 2s ease-in-out infinite;
-}
-@keyframes rotate {
-  0%, 100% { transform:rotate(0deg); }
-  50% { transform:rotate(90deg); }
-}
-
-@media(max-width:700px) and (orientation:portrait) {
-  #orientationPrompt { display:flex !important; }
-  #gc { display:none !important; }
-}
-@media(max-width:900px) and (orientation:landscape) {
+@media(max-width:900px) {
   #mctrl { display:flex !important; }
   #chint { display:none !important; }
-  #gc { display:block !important; }
 }
 @media(min-width:901px) {
   #mctrl { display:none !important; }
-  #gc { display:block !important; }
 }
 </style>
 </head>
@@ -362,13 +340,6 @@ canvas { position:absolute; top:0; left:0; display:block; }
         </button>
       </div>
     </div>
-  </div>
-
-  <!-- ORIENTATION PROMPT -->
-  <div id="orientationPrompt">
-    <div class="rotate-icon">📱</div>
-    <div style="font-size:1.5rem;font-weight:700;margin-bottom:0.5rem;">Rotate Your Device</div>
-    <div style="font-size:1rem;color:#aaa;">Please rotate to landscape mode for the best experience</div>
   </div>
 
   <!-- LOADING INDICATOR -->
@@ -3251,35 +3222,10 @@ for (var mi = 0; mi < mids.length; mi++) {
   })(mids[mi]);
 }
 
-// Force landscape orientation on mobile
-function checkOrientation() {
-  var isMobile = window.innerWidth < 700;
-  var isPortrait = window.innerHeight > window.innerWidth;
-  
-  if (isMobile && isPortrait) {
-    // Portrait mode on mobile - show prompt
-    document.getElementById('orientationPrompt').style.display = 'flex';
-    document.getElementById('gc').style.display = 'none';
-  } else {
-    document.getElementById('orientationPrompt').style.display = 'none';
-    document.getElementById('gc').style.display = 'block';
-    // Resize canvas when orientation changes
-    resize();
-  }
-  
-  console.log('Orientation check:', {
-    width: window.innerWidth,
-    height: window.innerHeight,
-    isMobile: isMobile,
-    isPortrait: isPortrait
-  });
-}
-
-window.addEventListener('resize', checkOrientation);
+// Handle orientation changes
 window.addEventListener('orientationchange', function() {
-  setTimeout(checkOrientation, 100);
+  setTimeout(resize, 100);
 });
-checkOrientation();
 
 // Request fullscreen on mobile when game starts
 function requestFullscreen() {
