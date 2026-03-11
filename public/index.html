@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
+<meta name="screen-orientation" content="landscape">
 <title>Stick Fight Web</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cinzel+Decorative:wght@400;700&display=swap');
@@ -130,20 +134,110 @@ canvas { position:absolute; top:0; left:0; display:block; }
 
 #mctrl {
   position:absolute; bottom:0; left:0; right:0;
-  display:none; justify-content:space-between;
-  padding:8px 12px 18px; z-index:25; pointer-events:none;
+  display:none; justify-content:space-between; align-items:flex-end;
+  padding:15px 20px 25px; z-index:25; pointer-events:none;
+  background:linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 100%);
 }
-.cg { display:flex; gap:5px; pointer-events:all; }
-.cb {
-  width:48px; height:48px; background:rgba(255,102,0,0.12);
-  border:1px solid rgba(255,102,0,0.35); border-radius:50%;
-  color:#ff9944; font-size:0.62rem; font-family:'Cinzel',serif;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
-  text-align:center; line-height:1.1; touch-action:manipulation;
+.cg { display:flex; gap:12px; pointer-events:all; align-items:flex-end; }
+
+/* D-Pad Style Controls */
+.dpad-container {
+  position:relative; width:140px; height:140px;
+  display:flex; align-items:center; justify-content:center;
+}
+.dpad-btn {
+  position:absolute; width:50px; height:50px;
+  background:rgba(255,255,255,0.15); backdrop-filter:blur(10px);
+  border:2px solid rgba(255,255,255,0.3); border-radius:8px;
+  color:#fff; font-size:1.2rem; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; touch-action:manipulation;
   -webkit-tap-highlight-color:transparent; user-select:none;
+  transition:all 0.1s; box-shadow:0 4px 15px rgba(0,0,0,0.3);
 }
-.cb:active { background:rgba(255,102,0,0.32); }
-@media(max-width:700px){ #mctrl{display:flex;} #chint{display:none;} }
+.dpad-btn:active {
+  background:rgba(255,255,255,0.35);
+  transform:scale(0.95);
+  box-shadow:0 2px 8px rgba(0,0,0,0.4);
+}
+.dpad-up { top:0; left:50%; transform:translateX(-50%); }
+.dpad-down { bottom:0; left:50%; transform:translateX(-50%); }
+.dpad-left { left:0; top:50%; transform:translateY(-50%); }
+.dpad-right { right:0; top:50%; transform:translateY(-50%); }
+.dpad-center {
+  width:45px; height:45px; border-radius:50%;
+  background:rgba(100,100,100,0.2);
+  border:2px solid rgba(255,255,255,0.2);
+  pointer-events:none;
+}
+
+/* Action Buttons */
+.action-container {
+  display:flex; flex-direction:column; gap:10px; align-items:flex-end;
+}
+.action-row { display:flex; gap:10px; }
+.action-btn {
+  width:65px; height:65px;
+  background:linear-gradient(135deg, rgba(255,80,80,0.9), rgba(200,40,40,0.9));
+  backdrop-filter:blur(10px);
+  border:3px solid rgba(255,255,255,0.4);
+  border-radius:50%;
+  color:#fff; font-size:0.75rem; font-weight:700;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  cursor:pointer; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent; user-select:none;
+  transition:all 0.1s; box-shadow:0 4px 20px rgba(255,80,80,0.5);
+  text-shadow:0 1px 3px rgba(0,0,0,0.5);
+  line-height:1.1;
+}
+.action-btn.secondary {
+  background:linear-gradient(135deg, rgba(100,150,255,0.9), rgba(60,100,200,0.9));
+  box-shadow:0 4px 20px rgba(100,150,255,0.5);
+}
+.action-btn.special {
+  background:linear-gradient(135deg, rgba(255,200,50,0.9), rgba(255,150,0,0.9));
+  box-shadow:0 4px 20px rgba(255,200,50,0.5);
+  width:70px; height:70px; font-size:0.8rem;
+}
+.action-btn:active {
+  transform:scale(0.9);
+  box-shadow:0 2px 10px rgba(255,80,80,0.7);
+}
+.action-btn.secondary:active {
+  box-shadow:0 2px 10px rgba(100,150,255,0.7);
+}
+.action-btn.special:active {
+  box-shadow:0 2px 10px rgba(255,200,50,0.7);
+}
+.btn-icon { font-size:1.5rem; margin-bottom:2px; }
+.btn-label { font-size:0.65rem; opacity:0.9; }
+
+/* Landscape orientation prompt */
+#orientationPrompt {
+  position:fixed; inset:0; background:#000;
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+  z-index:9999; color:#fff; text-align:center; padding:2rem;
+}
+#orientationPrompt .rotate-icon {
+  font-size:5rem; margin-bottom:1rem;
+  animation:rotate 2s ease-in-out infinite;
+}
+@keyframes rotate {
+  0%, 100% { transform:rotate(0deg); }
+  50% { transform:rotate(90deg); }
+}
+
+@media(max-width:700px) and (orientation:portrait) {
+  #orientationPrompt { display:flex !important; }
+  #gc { display:none; }
+}
+@media(max-width:900px) and (orientation:landscape) {
+  #mctrl { display:flex !important; }
+  #chint { display:none !important; }
+}
+@media(min-width:901px) {
+  #mctrl { display:none !important; }
+}
 </style>
 </head>
 <body>
@@ -224,19 +318,55 @@ canvas { position:absolute; top:0; left:0; display:block; }
     <div id="chint"></div>
   </div>
 
-  <!-- MOBILE -->
+  <!-- MOBILE CONTROLS -->
   <div id="mctrl">
+    <!-- Left Side: D-Pad Movement -->
     <div class="cg">
-      <button class="cb" id="mL">LEFT</button>
-      <button class="cb" id="mR">RIGHT</button>
-      <button class="cb" id="mJ">JUMP</button>
-      <button class="cb" id="mC">DUCK</button>
+      <div class="dpad-container">
+        <div class="dpad-center"></div>
+        <button class="dpad-btn dpad-up" id="mJ">↑</button>
+        <button class="dpad-btn dpad-down" id="mC">↓</button>
+        <button class="dpad-btn dpad-left" id="mL">←</button>
+        <button class="dpad-btn dpad-right" id="mR">→</button>
+      </div>
     </div>
-    <div class="cg">
-      <button class="cb" id="mP" style="background:rgba(255,80,0,0.18);border-color:rgba(255,80,0,0.5)">PNC</button>
-      <button class="cb" id="mK" style="background:rgba(140,0,200,0.18);border-color:rgba(140,0,200,0.5);color:#cc88ff">KICK</button>
-      <button class="cb" id="mS" style="background:rgba(0,80,255,0.18);border-color:rgba(0,80,255,0.5);color:#88aaff">MGC</button>
+    
+    <!-- Right Side: Action Buttons -->
+    <div class="action-container">
+      <div class="action-row">
+        <button class="action-btn special" id="mU">
+          <span class="btn-icon">⚡</span>
+          <span class="btn-label">ULTIMATE</span>
+        </button>
+      </div>
+      <div class="action-row">
+        <button class="action-btn secondary" id="mS">
+          <span class="btn-icon">✨</span>
+          <span class="btn-label">MAGIC</span>
+        </button>
+        <button class="action-btn" id="mK">
+          <span class="btn-icon">🦵</span>
+          <span class="btn-label">KICK</span>
+        </button>
+      </div>
+      <div class="action-row">
+        <button class="action-btn secondary" id="mB">
+          <span class="btn-icon">🛡️</span>
+          <span class="btn-label">BLOCK</span>
+        </button>
+        <button class="action-btn" id="mP">
+          <span class="btn-icon">👊</span>
+          <span class="btn-label">PUNCH</span>
+        </button>
+      </div>
     </div>
+  </div>
+
+  <!-- ORIENTATION PROMPT -->
+  <div id="orientationPrompt">
+    <div class="rotate-icon">📱</div>
+    <div style="font-size:1.5rem;font-weight:700;margin-bottom:0.5rem;">Rotate Your Device</div>
+    <div style="font-size:1rem;color:#aaa;">Please rotate to landscape mode for the best experience</div>
   </div>
 
   <!-- RESULT -->
@@ -1158,9 +1288,9 @@ function updatePlayer(dt) {
   var punch  = keys[kb.punch] || keys['mP'];
   var kick   = keys[kb.kick] || keys['mK'];
   var spec   = keys[kb.special] || keys['mS'];
-  var ultimate = keys[kb.ultimate];
+  var ultimate = keys[kb.ultimate] || keys['mU'];
   var dash = keys[kb.dash];
-  var block = keys[kb.block];
+  var block = keys[kb.block] || keys['mB'];
   var grab = keys[kb.grab]; // NEW: Grab key
   
   if (punch) console.log('J key detected');
@@ -3071,7 +3201,8 @@ window.addEventListener('keydown', function(e){
 });
 window.addEventListener('keyup', function(e){ keys[e.key] = false; });
 
-var mids = ['mL','mR','mJ','mC','mP','mK','mS'];
+// Mobile controls setup
+var mids = ['mL','mR','mJ','mC','mP','mK','mS','mU','mB'];
 for (var mi = 0; mi < mids.length; mi++) {
   (function(id){
     var btn = document.getElementById(id);
@@ -3083,6 +3214,43 @@ for (var mi = 0; mi < mids.length; mi++) {
     btn.addEventListener('mouseleave', function(){ keys[id]=false; });
   })(mids[mi]);
 }
+
+// Force landscape orientation on mobile
+function checkOrientation() {
+  if (window.innerWidth < 700 && window.innerHeight > window.innerWidth) {
+    // Portrait mode on mobile - show prompt
+    document.getElementById('orientationPrompt').style.display = 'flex';
+  } else {
+    document.getElementById('orientationPrompt').style.display = 'none';
+  }
+}
+
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', checkOrientation);
+checkOrientation();
+
+// Request fullscreen on mobile when game starts
+function requestFullscreen() {
+  var elem = document.documentElement;
+  if (elem.requestFullscreen) {
+    elem.requestFullscreen();
+  } else if (elem.webkitRequestFullscreen) {
+    elem.webkitRequestFullscreen();
+  } else if (elem.mozRequestFullScreen) {
+    elem.mozRequestFullScreen();
+  } else if (elem.msRequestFullscreen) {
+    elem.msRequestFullscreen();
+  }
+}
+
+// Auto-fullscreen on first touch (mobile)
+var hasRequestedFullscreen = false;
+document.addEventListener('touchstart', function() {
+  if (!hasRequestedFullscreen && window.innerWidth < 900) {
+    hasRequestedFullscreen = true;
+    requestFullscreen();
+  }
+}, {once: true});
 
 // boot bg
 keys = {};
