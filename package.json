@@ -1,21 +1,13 @@
 {
-  "name": "web-fighting-game",
+  "name": "stick-fight-web",
   "version": "1.0.0",
-  "description": "A 2D web-based fighting game",
-  "main": "index.js",
+  "description": "A 2D web-based stick fighting game",
+  "main": "index.html",
   "scripts": {
-    "dev": "webpack serve --mode development",
-    "build": "webpack --mode production"
+    "start": "python3 -m http.server 8080",
+    "dev": "python3 -m http.server 8080"
   },
-  "dependencies": {
-    "phaser": "^3.55.2"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.22.0",
-    "@babel/preset-env": "^7.22.0",
-    "babel-loader": "^9.1.2",
-    "webpack": "^5.88.0",
-    "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1"
-  }
+  "keywords": ["game", "fighting", "html5", "canvas", "stick-fight"],
+  "author": "StickFight Developer",
+  "license": "MIT"
 }
