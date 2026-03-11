@@ -252,7 +252,8 @@ canvas { position:absolute; top:0; left:0; display:block; }
   </div>
 
   <!-- STORY -->
-  <div class="screen hidden" id="storyScreen" style="overflow-y:auto;padding:1rem 0;scroll-behavior:smooth;">
+  <div class="screen hidden" id="storyScreen" style="overflow-y:auto;padding:1rem 0;">
+    <div id="storyTop" style="height:0;"></div>
     <div class="stitle">Story Mode</div>
     <div class="ssub">CLOSE THE GATES OF DARKNESS</div>
     <div style="color:#ffaa44;font-size:0.9rem;margin:0.5rem 0;">Progress: <span id="actProgress">0</span>/25 Acts</div>
@@ -823,26 +824,32 @@ function setScreen(id) {
   for (var si = 0; si < ids.length; si++) {
     document.getElementById(ids[si]).classList.add('hidden');
   }
-  document.getElementById(id).classList.remove('hidden');
   
-  // Reset scroll position for scrollable screens
+  var screen = document.getElementById(id);
+  screen.classList.remove('hidden');
+  
+  // Reset scroll position immediately for scrollable screens
   var scrollableScreens = ['storyScreen', 'shopScreen', 'achievementsScreen', 'skillTreeScreen', 'rulesScreen', 'statsScreen', 'dailyChallengesScreen'];
   if (scrollableScreens.indexOf(id) !== -1) {
-    setTimeout(function() {
-      var screen = document.getElementById(id);
-      if (screen) screen.scrollTop = 0;
-    }, 50);
+    screen.scrollTop = 0;
+    // Force scroll to top multiple times to ensure it works
+    setTimeout(function() { 
+      screen.scrollTop = 0;
+      // Also try scrollIntoView for story screen
+      if (id === 'storyScreen') {
+        var storyTop = document.getElementById('storyTop');
+        if (storyTop) storyTop.scrollIntoView({block: 'start'});
+      }
+    }, 0);
+    setTimeout(function() { screen.scrollTop = 0; }, 10);
+    setTimeout(function() { screen.scrollTop = 0; }, 50);
+    setTimeout(function() { screen.scrollTop = 0; }, 100);
   }
 }
 
 function showMenu()   { setScreen('menuScreen');  gameRunning = false; updateCoinDisplay(); }
 function showStory()  { 
-  setScreen('storyScreen'); 
-  // Scroll to top on mobile
-  setTimeout(function() {
-    var storyScreen = document.getElementById('storyScreen');
-    if (storyScreen) storyScreen.scrollTop = 0;
-  }, 50);
+  setScreen('storyScreen');
 }
 
 // NEW: Show Skill Tree
