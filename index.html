@@ -1,0 +1,3096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stick Fight Web</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cinzel+Decorative:wght@400;700&display=swap');
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; overflow:hidden; font-family:'Cinzel',serif; user-select:none; }
+#gc { position:relative; width:100vw; height:100vh; }
+canvas { position:absolute; top:0; left:0; display:block; }
+
+.screen {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; z-index:10; transition:opacity 0.5s;
+}
+.screen.hidden { opacity:0; pointer-events:none; }
+
+#menuScreen { background:radial-gradient(ellipse at center,#1a0800 0%,#000 70%); }
+.ptc { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+.p { position:absolute; width:2px; height:2px; border-radius:50%; animation:fp linear infinite; opacity:0; }
+@keyframes fp {
+  0%   { transform:translateY(100vh) scale(0); opacity:0; }
+  10%  { opacity:1; }
+  90%  { opacity:0.4; }
+  100% { transform:translateY(-5vh) scale(1.5); opacity:0; }
+}
+
+.gtitle {
+  font-family:'Cinzel Decorative',serif; font-size:clamp(2rem,6vw,5rem); font-weight:900;
+  color:transparent; background:linear-gradient(180deg,#fff5e0 0%,#ff9900 40%,#cc3300 100%);
+  -webkit-background-clip:text; background-clip:text;
+  filter:drop-shadow(0 0 30px #ff6600aa);
+  letter-spacing:0.1em; text-align:center; line-height:1.1;
+  animation:tp 3s ease-in-out infinite;
+}
+.gsub { color:#ff6600; font-size:clamp(0.55rem,1.4vw,0.9rem); letter-spacing:0.5em; margin-top:0.4em; opacity:0.7; }
+@keyframes tp {
+  0%,100% { filter:drop-shadow(0 0 30px #ff6600aa); }
+  50%     { filter:drop-shadow(0 0 60px #ff9900cc) drop-shadow(0 0 80px #ff330055); }
+}
+
+.mfig { width:clamp(80px,14vw,130px); height:clamp(80px,14vw,130px); margin:1.2rem 0; filter:drop-shadow(0 0 18px #ff6600); animation:si 2s ease-in-out infinite; }
+@keyframes si { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
+
+.mbtn {
+  background:linear-gradient(135deg,#1a0800,#3d1500); border:1px solid #ff6600;
+  color:#ffcc88; font-family:'Cinzel',serif; font-size:clamp(0.75rem,1.8vw,1rem);
+  letter-spacing:0.2em; padding:0.75em 2.5em; cursor:pointer; margin:0.35rem;
+  clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);
+  transition:all 0.2s; text-transform:uppercase; width:clamp(170px,28vw,260px); text-align:center;
+}
+.mbtn:hover { color:#fff; border-color:#ffaa44; box-shadow:0 0 20px #ff660055; }
+.mbtn:active { transform:scale(0.97); }
+.mbtn:disabled { opacity:0.4; cursor:not-allowed; }
+
+#storyScreen { background:radial-gradient(ellipse at center,#0d0015 0%,#000 70%); }
+.agrid { display:grid; grid-template-columns:repeat(5,1fr); gap:0.8rem; margin:1.2rem 0; max-width:900px; width:90vw; }
+@media(max-width:700px){ .agrid{grid-template-columns:repeat(3,1fr);} }
+.acard {
+  background:linear-gradient(135deg,#0d0015,#1a0030); border:1px solid #6600cc33;
+  padding:0.8rem; cursor:pointer; text-align:center; transition:all 0.2s;
+  clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+}
+.acard.locked { opacity:0.35; cursor:not-allowed; filter:grayscale(1); }
+.acard:not(.locked):hover { border-color:#aa44ff; box-shadow:0 0 18px #6600cc44; transform:translateY(-3px); }
+.aname { color:#cc88ff; font-size:clamp(0.5rem,1.2vw,0.75rem); letter-spacing:0.1em; }
+.aboss { color:#fff; font-size:clamp(0.65rem,1.6vw,0.9rem); font-weight:700; margin:0.25rem 0; }
+.aicon { font-size:clamp(1.4rem,3.5vw,2.2rem); display:block; margin:0.2rem 0; }
+
+.stitle {
+  font-family:'Cinzel Decorative',serif; font-size:clamp(1.1rem,3.5vw,2.2rem);
+  font-weight:700; color:transparent; background:linear-gradient(180deg,#fff5e0,#ff9900);
+  -webkit-background-clip:text; background-clip:text;
+  margin-bottom:0.25em; filter:drop-shadow(0 0 12px #ff660055);
+}
+.ssub { color:#ff660055; font-size:clamp(0.45rem,1vw,0.65rem); letter-spacing:0.4em; margin-bottom:1.2rem; }
+
+#hud {
+  position:absolute; top:0; left:0; right:0;
+  padding:clamp(5px,1.2vw,10px) clamp(6px,1.5vw,16px);
+  display:flex; justify-content:space-between; align-items:flex-start;
+  z-index:20; pointer-events:none;
+}
+.fhud { flex:1; }
+.fhud.r { text-align:right; }
+.fname { font-size:clamp(0.5rem,1.1vw,0.75rem); color:#ffcc88; letter-spacing:0.12em; margin-bottom:3px; }
+.hpbg { height:clamp(7px,1.3vw,11px); background:#1a0000; border:1px solid #cc330044; border-radius:2px; overflow:hidden; }
+.hpbar { height:100%; background:linear-gradient(90deg,#cc0000,#ff3300,#ff6600); transition:width 0.18s; }
+.hpbar.r { float:right; background:linear-gradient(270deg,#cc0000,#ff3300,#ff6600); }
+.tbox {
+  background:#0a0005; border:1px solid #6600cc44; padding:0.25em 0.8em;
+  color:#cc88ff; font-size:clamp(0.9rem,2.2vw,1.5rem); font-weight:700;
+  text-align:center; min-width:clamp(44px,9vw,70px); margin:0 0.4rem; flex-shrink:0;
+}
+
+#rbanner {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:30; text-align:center; pointer-events:none; transition:opacity 0.5s;
+}
+.rtext {
+  font-family:'Cinzel Decorative',serif; font-size:clamp(1.8rem,6vw,4.5rem);
+  color:#fff; text-shadow:0 0 25px #ff6600,0 0 50px #ff3300;
+  animation:ra 0.45s ease-out;
+}
+@keyframes ra { from{transform:scale(2);opacity:0;} to{transform:scale(1);opacity:1;} }
+
+#chint {
+  position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+  color:#ffffff33; font-size:clamp(0.38rem,0.9vw,0.6rem); letter-spacing:0.1em;
+  text-align:center; pointer-events:none; white-space:nowrap;
+}
+
+#resultScreen { background:rgba(0,0,0,0.88); }
+.rtitle {
+  font-family:'Cinzel Decorative',serif; font-size:clamp(1.8rem,7vw,4.5rem);
+  font-weight:900; margin-bottom:0.4em;
+}
+.rtitle.win {
+  color:transparent; background:linear-gradient(180deg,#fff 0%,#ffcc00 50%,#ff6600 100%);
+  -webkit-background-clip:text; background-clip:text;
+  filter:drop-shadow(0 0 25px #ffaa00); animation:tp 2s ease-in-out infinite;
+}
+.rtitle.lose {
+  color:transparent; background:linear-gradient(180deg,#ff4444,#cc0000);
+  -webkit-background-clip:text; background-clip:text; filter:drop-shadow(0 0 25px #cc0000);
+}
+.rsub { color:#777; font-size:clamp(0.55rem,1.3vw,0.85rem); letter-spacing:0.4em; margin-bottom:1.8rem; }
+
+#mctrl {
+  position:absolute; bottom:0; left:0; right:0;
+  display:none; justify-content:space-between;
+  padding:8px 12px 18px; z-index:25; pointer-events:none;
+}
+.cg { display:flex; gap:5px; pointer-events:all; }
+.cb {
+  width:48px; height:48px; background:rgba(255,102,0,0.12);
+  border:1px solid rgba(255,102,0,0.35); border-radius:50%;
+  color:#ff9944; font-size:0.62rem; font-family:'Cinzel',serif;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  text-align:center; line-height:1.1; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent; user-select:none;
+}
+.cb:active { background:rgba(255,102,0,0.32); }
+@media(max-width:700px){ #mctrl{display:flex;} #chint{display:none;} }
+</style>
+</head>
+<body>
+<div id="gc">
+  <canvas id="c"></canvas>
+
+  <!-- MENU -->
+  <div class="screen" id="menuScreen">
+    <div class="ptc" id="ptc"></div>
+    <div class="gtitle">Stick<br>Fight</div>
+    <div class="gsub">WEB EDITION</div>
+    <svg class="mfig" viewBox="0 0 100 100">
+      <ellipse cx="50" cy="96" rx="20" ry="4" fill="#ff6600" opacity="0.3"/>
+      <rect x="43" y="46" width="15" height="27" rx="3" fill="#111"/>
+      <circle cx="50" cy="36" r="11" fill="#111"/>
+      <line x1="43" y1="53" x2="29" y2="63" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+      <line x1="57" y1="53" x2="77" y2="49" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+      <line x1="77" y1="49" x2="94" y2="26" stroke="#888" stroke-width="3" stroke-linecap="round"/>
+      <line x1="83" y1="41" x2="90" y2="45" stroke="#666" stroke-width="2"/>
+      <line x1="47" y1="73" x2="41" y2="93" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+      <line x1="53" y1="73" x2="59" y2="93" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+    </svg>
+    <div style="color:#ffdd00;font-size:1.2rem;margin:0.5rem;">💰 <span id="menuCoins">0</span> Coins</div>
+    <button class="mbtn" onclick="showStory()">STORY</button>
+    <button class="mbtn" onclick="startSurvival()">SURVIVAL</button>
+    <button class="mbtn" onclick="showSkillTree()">SKILL TREE</button>
+    <button class="mbtn" onclick="showRules()">RULES</button>
+    <button class="mbtn" onclick="showShop()">SHOP & UPGRADES</button>
+    <button class="mbtn" onclick="showAchievements()">ACHIEVEMENTS</button>
+    <button class="mbtn" onclick="showStats()">STATISTICS</button>
+    <button class="mbtn" onclick="showDailyChallenges()">DAILY CHALLENGES</button>
+  </div>
+
+  <!-- STORY -->
+  <div class="screen hidden" id="storyScreen" style="overflow-y:auto;padding:1rem 0;">
+    <div class="stitle">Story Mode</div>
+    <div class="ssub">CLOSE THE GATES OF DARKNESS</div>
+    <div style="color:#ffaa44;font-size:0.9rem;margin:0.5rem 0;">Progress: <span id="actProgress">0</span>/25 Acts</div>
+    <div id="agrid"></div>
+    <button class="mbtn" onclick="showMenu()" style="margin-top:1rem;">BACK</button>
+  </div>
+
+  <!-- SHOP -->
+  <div class="screen hidden" id="shopScreen" style="overflow-y:auto;">
+    <div class="stitle">Shop & Upgrades</div>
+    <div style="color:#ffdd00;font-size:1.5rem;margin:0.5rem;">💰 <span id="shopCoins">0</span> Coins</div>
+    
+    <div style="max-width:900px;width:90%;margin:1rem auto;">
+      <div style="color:#ffaa44;font-size:1.2rem;margin:1rem 0;text-align:left;">⚔️ WEAPONS</div>
+      <div id="weaponGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.8rem;"></div>
+      
+      <div style="color:#ffaa44;font-size:1.2rem;margin:1.5rem 0 1rem;text-align:left;">📈 UPGRADES</div>
+      <div id="upgradeGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.8rem;"></div>
+      
+      <div style="color:#ffaa44;font-size:1.2rem;margin:1.5rem 0 1rem;text-align:left;">👤 CHARACTERS</div>
+      <div id="characterGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.8rem;"></div>
+    </div>
+    
+    <button class="mbtn" onclick="showMenu()" style="margin-top:1rem;">BACK</button>
+  </div>
+
+  <!-- FIGHT -->
+  <div class="screen hidden" id="fightScreen">
+    <div id="hud">
+      <div class="fhud">
+        <div class="fname" id="pname">STICK</div>
+        <div class="hpbg"><div class="hpbar" id="php" style="width:100%"></div></div>
+        <div class="hpbg" style="height:6px;margin-top:3px;background:#1a0a00;"><div class="hpbar" id="peng" style="width:0%;background:linear-gradient(90deg,#ffaa00,#ffdd00,#ffff00);"></div></div>
+      </div>
+      <div class="tbox" id="timer">60</div>
+      <div class="fhud r">
+        <div class="fname" id="ename">LYNX</div>
+        <div class="hpbg"><div class="hpbar r" id="ehp" style="width:100%"></div></div>
+        <div class="hpbg" style="height:6px;margin-top:3px;background:#0a0a1a;"><div class="hpbar r" id="eeng" style="width:0%;background:linear-gradient(270deg,#00aaff,#00ddff,#00ffff);float:right;"></div></div>
+      </div>
+    </div>
+    <div id="rbanner" style="opacity:0"></div>
+    <div id="chint"></div>
+  </div>
+
+  <!-- MOBILE -->
+  <div id="mctrl">
+    <div class="cg">
+      <button class="cb" id="mL">LEFT</button>
+      <button class="cb" id="mR">RIGHT</button>
+      <button class="cb" id="mJ">JUMP</button>
+      <button class="cb" id="mC">DUCK</button>
+    </div>
+    <div class="cg">
+      <button class="cb" id="mP" style="background:rgba(255,80,0,0.18);border-color:rgba(255,80,0,0.5)">PNC</button>
+      <button class="cb" id="mK" style="background:rgba(140,0,200,0.18);border-color:rgba(140,0,200,0.5);color:#cc88ff">KICK</button>
+      <button class="cb" id="mS" style="background:rgba(0,80,255,0.18);border-color:rgba(0,80,255,0.5);color:#88aaff">MGC</button>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="screen hidden" id="resultScreen">
+    <div class="rtitle" id="rtitle">VICTORY</div>
+    <div class="rsub" id="rsub">WELL DONE</div>
+    <button class="mbtn" id="rnext" onclick="nextFight()">NEXT FIGHT</button>
+    <button class="mbtn" onclick="retryFight()" style="margin-top:0.3rem">RETRY</button>
+    <button class="mbtn" onclick="showMenu()" style="margin-top:0.3rem;opacity:0.65">MENU</button>
+  </div>
+
+  <!-- ACHIEVEMENTS SCREEN -->
+  <div class="screen hidden" id="achievementsScreen" style="overflow-y:auto;">
+    <div class="stitle">Achievements</div>
+    <div style="color:#ffaa44;font-size:1rem;margin:0.5rem;">🏆 <span id="achCount">0</span>/<span id="achTotal">10</span> Unlocked</div>
+    <div id="achievementGrid" style="max-width:800px;width:90%;margin:1rem auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.8rem;"></div>
+    <button class="mbtn" onclick="showMenu()" style="margin-top:1rem;">BACK</button>
+  </div>
+
+  <!-- ACHIEVEMENT POPUP -->
+  <div id="achievementPopup" style="position:fixed;top:20px;right:20px;z-index:100;opacity:0;transform:translateX(400px);pointer-events:none;transition:all 0.5s ease-out;">
+    <div style="background:linear-gradient(135deg,#1a3300,#2a5500);border:2px solid #88ff44;padding:1rem 1.5rem;border-radius:8px;box-shadow:0 0 30px #88ff4466;min-width:280px;">
+      <div style="color:#ffdd00;font-size:1.5rem;text-align:center;margin-bottom:0.5rem;">🏆 ACHIEVEMENT UNLOCKED!</div>
+      <div id="achPopupName" style="color:#fff;font-size:1.1rem;font-weight:700;text-align:center;margin-bottom:0.3rem;">Achievement Name</div>
+      <div id="achPopupDesc" style="color:#aaa;font-size:0.85rem;text-align:center;margin-bottom:0.5rem;">Achievement description</div>
+      <div id="achPopupReward" style="color:#ffdd00;font-size:0.9rem;text-align:center;">+100 💰</div>
+    </div>
+  </div>
+
+  <!-- SKILL TREE SCREEN -->
+  <div class="screen hidden" id="skillTreeScreen" style="overflow-y:auto;">
+    <div class="stitle">Skill Tree</div>
+    <div style="color:#ffaa44;font-size:1rem;margin:0.5rem;">Unlock powerful abilities</div>
+    <div style="color:#ffdd00;font-size:1.2rem;margin:0.5rem;">💰 <span id="skillCoins">0</span> Coins | 🌟 <span id="skillPoints">0</span> Skill Points</div>
+    <div id="skillTreeGrid" style="max-width:900px;width:90%;margin:1rem auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;"></div>
+    <button class="mbtn" onclick="showMenu()" style="margin-top:1rem;">BACK</button>
+  </div>
+
+  <!-- RULES SCREEN -->
+  <div class="screen hidden" id="rulesScreen" style="overflow-y:auto;padding:2rem 1rem;">
+    <div class="stitle">Controls & Settings</div>
+    <div style="color:#ffaa44;font-size:0.9rem;margin-bottom:2rem;">Customize your keyboard controls</div>
+    
+    <div style="max-width:700px;width:90%;margin:0 auto;text-align:left;">
+      
+      <!-- KEYBOARD CONTROLS -->
+      <div style="background:linear-gradient(135deg,#1a0800,#3d1500);border:2px solid #ff6600;padding:2rem;border-radius:8px;">
+        <div style="color:#ff9900;font-size:1.8rem;font-weight:700;margin-bottom:2rem;text-align:center;">⌨️ KEYBOARD CONTROLS</div>
+        
+        <div style="display:grid;gap:1.5rem;">
+          
+          <!-- Movement Section -->
+          <div>
+            <div style="color:#ffaa44;font-size:1.3rem;font-weight:700;margin-bottom:1rem;border-bottom:2px solid #ff660044;padding-bottom:0.5rem;">Movement</div>
+            <div style="display:grid;gap:0.8rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:0.8rem;border-radius:4px;">
+                <span style="color:#fff;font-size:1.1rem;">Move Left</span>
+                <button class="key-btn" onclick="changeKey('left')" style="background:#88ff44;color:#000;padding:0.5rem 1.5rem;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:1rem;" id="key-left">A</button>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:0.8rem;border-radius:4px;">
+                <span style="color:#fff;font-size:1.1rem;">Move Right</span>
+                <button class="key-btn" onclick="changeKey('right')" style="background:#88ff44;color:#000;padding:0.5rem 1.5rem;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:1rem;" id="key-right">D</button>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:0.8rem;border-radius:4px;">
+                <span style="color:#fff;font-size:1.1rem;">Jump</span>
+                <button class="key-btn" onclick="changeKey('up')" style="background:#88ff44;color:#000;padding:0.5rem 1.5rem;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:1rem;" id="key-up">W</button>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:0.8rem;border-radius:4px;">
+                <span style="color:#fff;font-size:1.1rem;">Crouch</span>
+                <button class="key-btn" onclick="changeKey('down')" style="background:#88ff44;color:#000;padding:0.5rem 1.5rem;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:1rem;" id="key-down">S</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Combat Section -->
+          <div>
+            <div style="color:#ffaa44;font-size:1.3rem;font-weight:700;margin-bottom:1rem;border-bottom:2px solid #ff660044;padding-bottom:0.5rem;">Combat</div>
+            <div style="display:grid;gap:0.8rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:0.8rem;border-radius:4px;">
+                <span style="color:#fff;font-size:1.1rem;">Punch</span>
+                <button class="key-btn" onclick="changeKey('punch')" style="background:#ff6666;color:#000;padding:0.5rem 1.5rem;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:1rem;" id="key-punch">J</button>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:0.8rem;border-radius:4px;">
+                <span style="color:#fff;font-size:1.1rem;">Kick</span>
+                <button class="key-btn" onclick="changeKey('kick')" style="background:#ff6666;color:#000;padding:0.5rem 1.5rem;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:1rem;" id="key-kick">K</button>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:0.8rem;border-radius:4px;">
+                <span style="color:#fff;font-size:1.1rem;">Magic/Special</span>
+                <button class="key-btn" onclick="changeKey('special')" style="background:#ff6666;color:#000;padding:0.5rem 1.5rem;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:1rem;" id="key-special">L</button>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:0.8rem;border-radius:4px;">
+                <span style="color:#fff;font-size:1.1rem;">Ultimate</span>
+                <button class="key-btn" onclick="changeKey('ultimate')" style="background:#ff6666;color:#000;padding:0.5rem 1.5rem;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:1rem;" id="key-ultimate">U</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Defense & Special Section -->
+          <div>
+            <div style="color:#ffaa44;font-size:1.3rem;font-weight:700;margin-bottom:1rem;border-bottom:2px solid #ff660044;padding-bottom:0.5rem;">Defense & Special</div>
+            <div style="display:grid;gap:0.8rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:0.8rem;border-radius:4px;">
+                <span style="color:#fff;font-size:1.1rem;">Block/Parry</span>
+                <button class="key-btn" onclick="changeKey('block')" style="background:#6699ff;color:#000;padding:0.5rem 1.5rem;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:1rem;" id="key-block">Z</button>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:0.8rem;border-radius:4px;">
+                <span style="color:#fff;font-size:1.1rem;">Dash</span>
+                <button class="key-btn" onclick="changeKey('dash')" style="background:#6699ff;color:#000;padding:0.5rem 1.5rem;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:1rem;" id="key-dash">E</button>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:0.8rem;border-radius:4px;">
+                <span style="color:#fff;font-size:1.1rem;">Grab/Throw</span>
+                <button class="key-btn" onclick="changeKey('grab')" style="background:#6699ff;color:#000;padding:0.5rem 1.5rem;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:1rem;" id="key-grab">G</button>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+        
+        <div style="text-align:center;margin-top:2rem;">
+          <button class="mbtn" onclick="resetControls()" style="background:#cc0000;border-color:#ff4444;width:auto;padding:0.6rem 2rem;">RESET TO DEFAULT</button>
+        </div>
+        
+        <div style="color:#ffaa44;font-size:0.85rem;text-align:center;margin-top:1.5rem;opacity:0.7;">
+          Click any button above to change its key binding
+        </div>
+      </div>
+      
+    </div>
+    
+    <button class="mbtn" onclick="showMenu()" style="margin-top:2rem;">BACK TO MENU</button>
+  </div>
+
+  <!-- STATISTICS SCREEN -->
+  <div class="screen hidden" id="statsScreen" style="overflow-y:auto;">
+    <div class="stitle">Statistics</div>
+    <div style="color:#ffaa44;font-size:1rem;margin:0.5rem;">Your Combat Record</div>
+    <div id="statsGrid" style="max-width:800px;width:90%;margin:1rem auto;"></div>
+    <button class="mbtn" onclick="showMenu()" style="margin-top:1rem;">BACK</button>
+  </div>
+
+  <!-- DAILY CHALLENGES SCREEN -->
+  <div class="screen hidden" id="dailyChallengesScreen" style="overflow-y:auto;">
+    <div class="stitle">Daily Challenges</div>
+    <div style="color:#ffaa44;font-size:1rem;margin:0.5rem;">Complete for bonus rewards!</div>
+    <div id="challengesGrid" style="max-width:800px;width:90%;margin:1rem auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;"></div>
+    <button class="mbtn" onclick="showMenu()" style="margin-top:1rem;">BACK</button>
+  </div>
+
+  <!-- SURVIVAL MODE SCREEN (shown during survival) -->
+  <div id="survivalHUD" style="position:absolute;top:80px;left:50%;transform:translateX(-50%);z-index:25;display:none;text-align:center;">
+    <div style="background:rgba(10,0,5,0.9);border:2px solid #ff6600;padding:0.8rem 1.5rem;border-radius:8px;">
+      <div style="color:#ffaa44;font-size:1.2rem;font-weight:700;">SURVIVAL MODE</div>
+      <div style="color:#fff;font-size:1.5rem;margin:0.3rem 0;">Wave <span id="survivalWave">1</span></div>
+      <div style="color:#88ff44;font-size:1rem;">Enemies Defeated: <span id="survivalKills">0</span></div>
+      <div style="color:#ffdd00;font-size:0.9rem;margin-top:0.3rem;">High Score: <span id="survivalHighScore">0</span></div>
+    </div>
+  </div>
+
+  <!-- RAGE MODE INDICATOR -->
+  <div id="rageIndicator" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:35;display:none;pointer-events:none;">
+    <div style="color:#ff0000;font-size:3rem;font-weight:900;text-shadow:0 0 20px #ff0000,0 0 40px #ff0000;animation:pulse 0.5s infinite;">
+      RAGE MODE!
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse {
+  0%, 100% { transform:scale(1); opacity:1; }
+  50% { transform:scale(1.1); opacity:0.8; }
+}
+</style>
+
+<script>
+var ACTS = [
+  // CHAPTER 1: THE GATES OPEN (Acts 1-5)
+  {name:'ACT I',    boss:'LYNX',      icon:'&#128049;', color:'#00ccff', unlocked:true,  diff:1},
+  {name:'ACT II',   boss:'HERMIT',    icon:'&#129497;', color:'#88ff44', unlocked:false, diff:2},
+  {name:'ACT III',  boss:'BUTCHER',   icon:'&#9876;',   color:'#ff4444', unlocked:false, diff:3},
+  {name:'ACT IV',   boss:'WASP',      icon:'&#128029;', color:'#ffff00', unlocked:false, diff:4},
+  {name:'ACT V',    boss:'WIDOW',     icon:'&#128375;', color:'#ff00ff', unlocked:false, diff:5},
+  
+  // CHAPTER 2: THE DARK REALM (Acts 6-10)
+  {name:'ACT VI',   boss:'TITAN',     icon:'&#9760;',   color:'#ff6600', unlocked:false, diff:6},
+  {name:'ACT VII',  boss:'SHOGUN',    icon:'&#9876;',   color:'#cc0000', unlocked:false, diff:7},
+  {name:'ACT VIII', boss:'GHOST',     icon:'&#128123;', color:'#9999ff', unlocked:false, diff:8},
+  {name:'ACT IX',   boss:'CRANE',     icon:'&#129414;', color:'#00ffff', unlocked:false, diff:9},
+  {name:'ACT X',    boss:'VIPER',     icon:'&#128013;', color:'#00ff00', unlocked:false, diff:10},
+  
+  // CHAPTER 3: THE ANCIENT WARRIORS (Acts 11-15)
+  {name:'ACT XI',   boss:'TIGER',     icon:'&#128005;', color:'#ff8800', unlocked:false, diff:11},
+  {name:'ACT XII',  boss:'DRAGON',    icon:'&#128009;', color:'#ff0000', unlocked:false, diff:12},
+  {name:'ACT XIII', boss:'PHOENIX',   icon:'&#129417;', color:'#ff6600', unlocked:false, diff:13},
+  {name:'ACT XIV',  boss:'SCORPION',  icon:'&#129410;', color:'#ffaa00', unlocked:false, diff:14},
+  {name:'ACT XV',   boss:'MANTIS',    icon:'&#129431;', color:'#88ff00', unlocked:false, diff:15},
+  
+  // CHAPTER 4: THE DEMON LORDS (Acts 16-20)
+  {name:'ACT XVI',  boss:'DEMON',     icon:'&#128520;', color:'#cc0066', unlocked:false, diff:16},
+  {name:'ACT XVII', boss:'REAPER',    icon:'&#128128;', color:'#666666', unlocked:false, diff:17},
+  {name:'ACT XVIII',boss:'SORCERER',  icon:'&#129497;', color:'#9900ff', unlocked:false, diff:18},
+  {name:'ACT XIX',  boss:'WARLORD',   icon:'&#9876;',   color:'#990000', unlocked:false, diff:19},
+  {name:'ACT XX',   boss:'DARKNESS',    icon:'&#128123;', color:'#000000', unlocked:false, diff:20},
+  
+  // CHAPTER 5: THE FINAL TRIALS (Acts 21-25)
+  {name:'ACT XXI',  boss:'SENTINEL',  icon:'&#128737;', color:'#0099ff', unlocked:false, diff:21},
+  {name:'ACT XXII', boss:'BERSERKER', icon:'&#129324;', color:'#ff0066', unlocked:false, diff:22},
+  {name:'ACT XXIII',boss:'ASSASSIN',  icon:'&#128481;', color:'#660099', unlocked:false, diff:23},
+  {name:'ACT XXIV', boss:'EMPEROR',   icon:'&#128081;', color:'#ffcc00', unlocked:false, diff:24},
+  {name:'ACT XXV',  boss:'DARK MASTER', icon:'&#128520;', color:'#330033', unlocked:false, diff:25}
+];
+
+// WEAPONS SYSTEM
+var WEAPONS = {
+  fists: {name:'Fists', damage:1.0, range:1.0, speed:1.0, cost:0, icon:'👊'},
+  sword: {name:'Sword', damage:1.3, range:1.4, speed:0.9, cost:100, icon:'⚔️'},
+  staff: {name:'Staff', damage:1.1, range:1.8, speed:0.85, cost:150, icon:'🥢'},
+  nunchucks: {name:'Nunchucks', damage:1.2, range:1.2, speed:1.3, cost:200, icon:'⛓️'},
+  dualBlades: {name:'Dual Blades', damage:1.5, range:1.1, speed:1.1, cost:300, icon:'🗡️'}
+};
+
+// CHARACTERS SYSTEM
+var CHARACTERS = {
+  shadow: {name:'Stick', hp:100, atk:15, def:5, spd:1.0, color:'#cc3300', glow:'#ff6600', unlocked:true, cost:0},
+  ninja: {name:'Ninja', hp:80, atk:18, def:3, spd:1.3, color:'#2a2a2a', glow:'#6666ff', unlocked:false, cost:200},
+  warrior: {name:'Warrior', hp:120, atk:20, def:8, spd:0.8, color:'#aa6600', glow:'#ffaa00', unlocked:false, cost:300},
+  monk: {name:'Monk', hp:90, atk:12, def:10, spd:1.1, color:'#ff8800', glow:'#ffdd00', unlocked:false, cost:250},
+  assassin: {name:'Assassin', hp:70, atk:25, def:2, spd:1.4, color:'#660066', glow:'#cc00cc', unlocked:false, cost:400}
+};
+
+// ACHIEVEMENTS
+var ACHIEVEMENTS = [
+  {id:'firstWin', name:'First Blood', desc:'Win your first fight', reward:50, check: function(){ return playerData.stats.wins >= 1; }},
+  {id:'combo5', name:'Combo Master', desc:'Get a 5x combo', reward:100, check: function(){ return playerData.stats.highestCombo >= 5; }},
+  {id:'perfect', name:'Untouchable', desc:'Win without taking damage', reward:200, check: function(){ return playerData.stats.perfectWins >= 1; }},
+  {id:'speed', name:'Speed Demon', desc:'Win in under 20 seconds', reward:150, check: function(){ return playerData.stats.fastestWin > 0 && playerData.stats.fastestWin < 20; }},
+  {id:'ultimate', name:'Ultimate Power', desc:'Use ultimate attack 10 times', reward:100, check: function(){ return playerData.stats.ultimateUses >= 10; }},
+  {id:'allActs', name:'Stick Master', desc:'Complete all 25 acts', reward:1000, check: function(){ return playerData.stats.actsCompleted >= 25; }},
+  {id:'parry', name:'Perfect Defense', desc:'Perfect parry 5 times', reward:150, check: function(){ return playerData.stats.perfectParries >= 5; }},
+  {id:'juggle', name:'Air Master', desc:'Air juggle 3+ hits', reward:150, check: function(){ return playerData.stats.maxJuggle >= 3; }},
+  {id:'rich', name:'Wealthy Warrior', desc:'Earn 1000 total coins', reward:200, check: function(){ return playerData.stats.totalCoins >= 1000; }},
+  {id:'shopaholic', name:'Shopaholic', desc:'Buy everything in shop', reward:300, check: function(){ 
+    var allWeapons = Object.keys(WEAPONS).every(function(k){ return k === 'fists' || playerData['weap_'+k]; });
+    var allChars = Object.keys(CHARACTERS).every(function(k){ return k === 'shadow' || playerData['char_'+k]; });
+    return allWeapons && allChars;
+  }}
+];
+
+// PLAYER PROGRESS (stored in localStorage)
+var playerData = {
+  coins: 0,
+  selectedCharacter: 'shadow',
+  selectedWeapon: 'fists',
+  upgrades: {attack:0, defense:0, speed:0, energy:0},
+  achievements: [],
+  stats: {
+    wins:0, losses:0, totalDamage:0, highestCombo:0, ultimateUses:0,
+    perfectWins:0, fastestWin:999, actsCompleted:0, perfectParries:0,
+    maxJuggle:0, totalCoins:0
+  },
+  // NEW: Skill tree
+  skillPoints: 0,
+  unlockedSkills: [],
+  // NEW: Survival mode
+  survivalHighScore: 0,
+  survivalHighWave: 0,
+  // NEW: Daily challenges
+  dailyChallenges: [],
+  lastChallengeDate: null,
+  // NEW: Leaderboard
+  leaderboard: {
+    fastestStoryWin: 999,
+    highestCombo: 0,
+    longestSurvival: 0
+  },
+  // NEW: Custom key bindings
+  keyBindings: {
+    left: 'a',
+    right: 'd',
+    up: 'w',
+    down: 's',
+    punch: 'j',
+    kick: 'k',
+    special: 'l',
+    ultimate: 'u',
+    block: 'z',
+    dash: 'e',
+    grab: 'g'
+  }
+};
+
+// NEW: Skill Tree System
+var SKILLS = {
+  doubleJump: {name:'Double Jump', desc:'Jump twice in mid-air', cost:200, costType:'coins', unlocked:false, icon:'🦅'},
+  counterAttack: {name:'Counter Attack', desc:'Perfect block triggers counter', cost:3, costType:'points', unlocked:false, icon:'⚡', requires:[]},
+  lifeSteal: {name:'Life Steal', desc:'Heal 10% of damage dealt', cost:5, costType:'points', unlocked:false, icon:'💉', requires:[]},
+  comboMaster: {name:'Combo Master', desc:'+50% combo damage', cost:4, costType:'points', unlocked:false, icon:'🔥', requires:[]},
+  energyBoost: {name:'Energy Boost', desc:'Start fights with 50 energy', cost:3, costType:'points', unlocked:false, icon:'⚡', requires:[]},
+  criticalStrike: {name:'Critical Strike+', desc:'35% crit chance (was 20%)', cost:5, costType:'points', unlocked:false, icon:'💥', requires:['comboMaster']},
+  rageMode: {name:'Rage Mode', desc:'Power boost at low HP', cost:4, costType:'points', unlocked:false, icon:'😡', requires:[]},
+  weaponMastery: {name:'Weapon Mastery', desc:'+30% weapon damage', cost:5, costType:'points', unlocked:false, icon:'⚔️', requires:[]},
+  dodgeRoll: {name:'Dodge Roll', desc:'Press E+E to dodge', cost:3, costType:'points', unlocked:false, icon:'🌀', requires:[]},
+  ultimateCharge: {name:'Ultimate Charge', desc:'Ultimate costs 75 energy', cost:6, costType:'points', unlocked:false, icon:'🌟', requires:['energyBoost']}
+};
+
+// NEW: Daily Challenges System
+var DAILY_CHALLENGES = [
+  {id:'perfectWin', name:'Flawless Victory', desc:'Win without taking damage', reward:150, type:'single'},
+  {id:'fastWin', name:'Speed Demon', desc:'Win in under 30 seconds', reward:100, type:'single'},
+  {id:'comboChallenge', name:'Combo King', desc:'Get a 10x combo', reward:120, type:'single'},
+  {id:'survivalWaves', name:'Survivor', desc:'Reach wave 5 in survival', reward:200, type:'single'},
+  {id:'noBlock', name:'No Defense', desc:'Win without blocking', reward:180, type:'single'},
+  {id:'ultimateOnly', name:'Ultimate Power', desc:'Win using only ultimate attacks', reward:250, type:'single'},
+  {id:'multiKills', name:'Warrior', desc:'Win 5 fights today', reward:300, type:'count', target:5}
+];
+
+// Load saved data
+function loadPlayerData() {
+  var saved = localStorage.getItem('stickFightData');
+  if (saved) {
+    var data = JSON.parse(saved);
+    playerData = Object.assign(playerData, data);
+    // Unlock purchased items
+    for (var char in CHARACTERS) {
+      if (playerData['char_'+char]) CHARACTERS[char].unlocked = true;
+    }
+    for (var weap in WEAPONS) {
+      if (playerData['weap_'+weap]) WEAPONS[weap].unlocked = true;
+    }
+  }
+}
+
+function savePlayerData() {
+  localStorage.setItem('stickFightData', JSON.stringify(playerData));
+}
+
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+var W, H, GY;
+
+// SOUND SYSTEM
+var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+var sounds = {
+  punch: function() { playTone(150, 0.05, 'square'); },
+  kick: function() { playTone(120, 0.08, 'sawtooth'); },
+  hit: function() { playTone(200, 0.1, 'triangle'); },
+  block: function() { playTone(300, 0.05, 'sine'); },
+  ultimate: function() { 
+    for(var i=0; i<5; i++) {
+      setTimeout(function(){ playTone(400+i*50, 0.15, 'square'); }, i*50);
+    }
+  },
+  coin: function() { playTone(800, 0.1, 'sine'); playTone(1000, 0.1, 'sine', 0.05); },
+  victory: function() { 
+    playTone(523, 0.2, 'sine');
+    setTimeout(function(){ playTone(659, 0.2, 'sine'); }, 200);
+    setTimeout(function(){ playTone(784, 0.3, 'sine'); }, 400);
+  }
+};
+
+function playTone(freq, duration, type, delay) {
+  setTimeout(function(){
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = freq;
+    osc.type = type || 'sine';
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + duration);
+  }, (delay || 0) * 1000);
+}
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  GY = H * 0.78;
+}
+window.addEventListener('resize', resize);
+resize();
+loadPlayerData();
+
+// Particles
+var ptc = document.getElementById('ptc');
+for (var pi = 0; pi < 28; pi++) {
+  var pel = document.createElement('div');
+  pel.className = 'p';
+  pel.style.left = (Math.random() * 100) + '%';
+  pel.style.animationDuration = (3 + Math.random() * 6) + 's';
+  pel.style.animationDelay   = (Math.random() * 8) + 's';
+  var psz = (1 + Math.random() * 3) + 'px';
+  pel.style.width = pel.style.height = psz;
+  pel.style.background = 'hsl(' + (15 + Math.random() * 25) + ',100%,' + (50 + Math.random() * 30) + '%)';
+  ptc.appendChild(pel);
+}
+
+function buildGrid() {
+  var grid = document.getElementById('agrid');
+  grid.innerHTML = '';
+  grid.className = 'agrid';
+  
+  var completedCount = 0;
+  for (var i = 0; i < ACTS.length; i++) {
+    if (ACTS[i].unlocked && i > 0) completedCount = i;
+  }
+  
+  // Update progress
+  var progressEl = document.getElementById('actProgress');
+  if (progressEl) progressEl.textContent = completedCount;
+  
+  for (var ai = 0; ai < ACTS.length; ai++) {
+    (function(i, act) {
+      var card = document.createElement('div');
+      card.className = 'acard' + (act.unlocked ? '' : ' locked');
+      
+      // Add chapter divider
+      if (i === 0 || i === 5 || i === 10 || i === 15 || i === 20) {
+        var chapterNum = Math.floor(i / 5) + 1;
+        var chapterNames = ['THE GATES OPEN', 'THE DARK REALM', 'THE ANCIENT WARRIORS', 'THE DEMON LORDS', 'THE FINAL TRIALS'];
+        var divider = document.createElement('div');
+        divider.style.gridColumn = '1 / -1';
+        divider.style.color = '#ffaa44';
+        divider.style.fontSize = 'clamp(0.7rem,1.5vw,1rem)';
+        divider.style.fontWeight = '700';
+        divider.style.textAlign = 'center';
+        divider.style.margin = '1rem 0 0.5rem';
+        divider.style.letterSpacing = '0.2em';
+        divider.textContent = 'CHAPTER ' + chapterNum + ': ' + chapterNames[Math.floor(i / 5)];
+        grid.appendChild(divider);
+      }
+      
+      card.innerHTML =
+        '<div class="aname">' + act.name + '</div>' +
+        '<span class="aicon">' + act.icon + '</span>' +
+        '<div class="aboss">' + act.boss + '</div>' +
+        '<div style="color:#888;font-size:0.6rem;margin-top:0.3rem;">Difficulty: ' + act.diff + '</div>';
+      if (act.unlocked) card.onclick = function(){ startAct(i); };
+      grid.appendChild(card);
+    })(ai, ACTS[ai]);
+  }
+}
+buildGrid();
+
+function setScreen(id) {
+  var ids = ['menuScreen','storyScreen','fightScreen','resultScreen','shopScreen','achievementsScreen','skillTreeScreen','rulesScreen','statsScreen','dailyChallengesScreen'];
+  for (var si = 0; si < ids.length; si++) {
+    document.getElementById(ids[si]).classList.add('hidden');
+  }
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function showMenu()   { setScreen('menuScreen');  gameRunning = false; updateCoinDisplay(); }
+function showStory()  { setScreen('storyScreen'); }
+
+// NEW: Show Skill Tree
+function showSkillTree() {
+  setScreen('skillTreeScreen');
+  document.getElementById('skillCoins').textContent = playerData.coins;
+  document.getElementById('skillPoints').textContent = playerData.skillPoints;
+  buildSkillTree();
+}
+
+// NEW: Show Rules
+function showRules() {
+  setScreen('rulesScreen');
+  updateKeyBindingDisplay();
+}
+
+// NEW: Update key binding display
+function updateKeyBindingDisplay() {
+  if (!playerData.keyBindings) {
+    playerData.keyBindings = {
+      left: 'a', right: 'd', up: 'w', down: 's',
+      punch: 'j', kick: 'k', special: 'l', ultimate: 'u',
+      block: 'z', dash: 'e', grab: 'g'
+    };
+  }
+  
+  for (var action in playerData.keyBindings) {
+    var btn = document.getElementById('key-' + action);
+    if (btn) {
+      btn.textContent = playerData.keyBindings[action].toUpperCase();
+    }
+  }
+}
+
+// NEW: Change key binding
+var changingKey = null;
+function changeKey(action) {
+  changingKey = action;
+  var btn = document.getElementById('key-' + action);
+  btn.textContent = 'Press Key...';
+  btn.style.background = '#ffaa00';
+  
+  // Add temporary key listener
+  var keyListener = function(e) {
+    e.preventDefault();
+    var newKey = e.key.toLowerCase();
+    
+    // Don't allow special keys
+    if (newKey === 'escape' || newKey === 'enter' || newKey === 'tab' || newKey.length > 1) {
+      btn.textContent = playerData.keyBindings[action].toUpperCase();
+      btn.style.background = action.includes('left') || action.includes('right') || action.includes('up') || action.includes('down') ? '#88ff44' : 
+                             (action.includes('punch') || action.includes('kick') || action.includes('special') || action.includes('ultimate') ? '#ff6666' : '#6699ff');
+      window.removeEventListener('keydown', keyListener);
+      changingKey = null;
+      return;
+    }
+    
+    // Check if key is already used
+    for (var act in playerData.keyBindings) {
+      if (playerData.keyBindings[act] === newKey && act !== action) {
+        alert('Key "' + newKey.toUpperCase() + '" is already assigned to ' + act + '!');
+        btn.textContent = playerData.keyBindings[action].toUpperCase();
+        btn.style.background = action.includes('left') || action.includes('right') || action.includes('up') || action.includes('down') ? '#88ff44' : 
+                               (action.includes('punch') || action.includes('kick') || action.includes('special') || action.includes('ultimate') ? '#ff6666' : '#6699ff');
+        window.removeEventListener('keydown', keyListener);
+        changingKey = null;
+        return;
+      }
+    }
+    
+    // Set new key
+    playerData.keyBindings[action] = newKey;
+    btn.textContent = newKey.toUpperCase();
+    btn.style.background = action.includes('left') || action.includes('right') || action.includes('up') || action.includes('down') ? '#88ff44' : 
+                           (action.includes('punch') || action.includes('kick') || action.includes('special') || action.includes('ultimate') ? '#ff6666' : '#6699ff');
+    savePlayerData();
+    window.removeEventListener('keydown', keyListener);
+    changingKey = null;
+  };
+  
+  window.addEventListener('keydown', keyListener);
+}
+
+// NEW: Reset controls to default
+function resetControls() {
+  if (confirm('Reset all controls to default?')) {
+    playerData.keyBindings = {
+      left: 'a', right: 'd', up: 'w', down: 's',
+      punch: 'j', kick: 'k', special: 'l', ultimate: 'u',
+      block: 'z', dash: 'e', grab: 'g'
+    };
+    savePlayerData();
+    updateKeyBindingDisplay();
+  }
+}
+
+// NEW: Show Statistics
+function showStats() {
+  setScreen('statsScreen');
+  buildStatsDisplay();
+}
+
+// NEW: Show Daily Challenges
+function showDailyChallenges() {
+  setScreen('dailyChallengesScreen');
+  generateDailyChallenges();
+  buildChallengesDisplay();
+}
+
+// NEW: Build Skill Tree
+function buildSkillTree() {
+  var grid = document.getElementById('skillTreeGrid');
+  grid.innerHTML = '';
+  
+  for (var skillKey in SKILLS) {
+    (function(key, skill) {
+      var unlocked = playerData.unlockedSkills.indexOf(key) !== -1;
+      var canAfford = skill.costType === 'coins' ? playerData.coins >= skill.cost : playerData.skillPoints >= skill.cost;
+      var reqsMet = !skill.requires || skill.requires.length === 0 || skill.requires.every(function(r){ return playerData.unlockedSkills.indexOf(r) !== -1; });
+      
+      var card = document.createElement('div');
+      card.className = 'acard' + (unlocked ? '' : (!reqsMet ? ' locked' : ''));
+      card.style.background = unlocked ? 'linear-gradient(135deg,#1a3300,#2a5500)' : 'linear-gradient(135deg,#0d0015,#1a0030)';
+      card.style.borderColor = unlocked ? '#88ff44' : '#6600cc33';
+      card.style.padding = '1rem';
+      
+      card.innerHTML = 
+        '<div style="font-size:2.5rem;margin:0.5rem 0;">' + skill.icon + '</div>' +
+        '<div style="color:' + (unlocked ? '#88ff44' : '#cc88ff') + ';font-size:1rem;font-weight:700;margin:0.5rem 0;">' + skill.name + '</div>' +
+        '<div style="color:#aaa;font-size:0.85rem;margin:0.5rem 0;min-height:2.5rem;">' + skill.desc + '</div>' +
+        '<div style="color:' + (unlocked ? '#88ff44' : (canAfford && reqsMet ? '#ffdd00' : '#ff4444')) + ';font-size:0.9rem;margin-top:0.5rem;">' + 
+        (unlocked ? '✓ UNLOCKED' : (skill.costType === 'coins' ? skill.cost + ' 💰' : skill.cost + ' 🌟')) + '</div>' +
+        (!reqsMet && !unlocked ? '<div style="color:#ff4444;font-size:0.75rem;margin-top:0.3rem;">Requires: ' + skill.requires.join(', ') + '</div>' : '');
+      
+      if (!unlocked && canAfford && reqsMet) {
+        card.style.cursor = 'pointer';
+        card.onclick = function() {
+          if (skill.costType === 'coins') {
+            playerData.coins -= skill.cost;
+          } else {
+            playerData.skillPoints -= skill.cost;
+          }
+          playerData.unlockedSkills.push(key);
+          SKILLS[key].unlocked = true;
+          savePlayerData();
+          if (sounds && sounds.coin) sounds.coin();
+          showSkillTree();
+        };
+      }
+      
+      grid.appendChild(card);
+    })(skillKey, SKILLS[skillKey]);
+  }
+}
+
+// NEW: Build Statistics Display
+function buildStatsDisplay() {
+  var grid = document.getElementById('statsGrid');
+  grid.innerHTML = '';
+  
+  var stats = [
+    {label:'Total Wins', value:playerData.stats.wins, icon:'🏆'},
+    {label:'Total Losses', value:playerData.stats.losses, icon:'💀'},
+    {label:'Win Rate', value:playerData.stats.wins > 0 ? Math.round((playerData.stats.wins/(playerData.stats.wins+playerData.stats.losses))*100) + '%' : '0%', icon:'📊'},
+    {label:'Highest Combo', value:playerData.stats.highestCombo + 'x', icon:'🔥'},
+    {label:'Perfect Wins', value:playerData.stats.perfectWins, icon:'✨'},
+    {label:'Fastest Win', value:playerData.stats.fastestWin < 999 ? playerData.stats.fastestWin + 's' : 'N/A', icon:'⚡'},
+    {label:'Acts Completed', value:playerData.stats.actsCompleted + '/25', icon:'📖'},
+    {label:'Perfect Parries', value:playerData.stats.perfectParries, icon:'🛡️'},
+    {label:'Max Air Juggle', value:playerData.stats.maxJuggle + ' hits', icon:'🌪️'},
+    {label:'Total Coins Earned', value:playerData.stats.totalCoins, icon:'💰'},
+    {label:'Ultimate Uses', value:playerData.stats.ultimateUses, icon:'💥'},
+    {label:'Survival High Score', value:playerData.survivalHighScore, icon:'🎯'},
+    {label:'Survival High Wave', value:playerData.survivalHighWave, icon:'🌊'}
+  ];
+  
+  stats.forEach(function(stat) {
+    var card = document.createElement('div');
+    card.style.background = 'linear-gradient(135deg,#0d0015,#1a0030)';
+    card.style.border = '1px solid #6600cc33';
+    card.style.padding = '1rem';
+    card.style.margin = '0.5rem 0';
+    card.style.borderRadius = '8px';
+    card.style.display = 'flex';
+    card.style.justifyContent = 'space-between';
+    card.style.alignItems = 'center';
+    
+    card.innerHTML = 
+      '<div style="display:flex;align-items:center;gap:0.8rem;">' +
+        '<span style="font-size:2rem;">' + stat.icon + '</span>' +
+        '<span style="color:#cc88ff;font-size:1.1rem;">' + stat.label + '</span>' +
+      '</div>' +
+      '<div style="color:#fff;font-size:1.5rem;font-weight:700;">' + stat.value + '</div>';
+    
+    grid.appendChild(card);
+  });
+}
+
+// NEW: Generate Daily Challenges
+function generateDailyChallenges() {
+  var today = new Date().toDateString();
+  if (playerData.lastChallengeDate !== today) {
+    // Generate new challenges
+    playerData.lastChallengeDate = today;
+    playerData.dailyChallenges = [];
+    
+    // Pick 3 random challenges
+    var shuffled = DAILY_CHALLENGES.slice().sort(function(){ return Math.random() - 0.5; });
+    for (var i = 0; i < 3; i++) {
+      playerData.dailyChallenges.push({
+        id: shuffled[i].id,
+        name: shuffled[i].name,
+        desc: shuffled[i].desc,
+        reward: shuffled[i].reward,
+        type: shuffled[i].type,
+        target: shuffled[i].target || 1,
+        progress: 0,
+        completed: false
+      });
+    }
+    savePlayerData();
+  }
+}
+
+// NEW: Build Challenges Display
+function buildChallengesDisplay() {
+  var grid = document.getElementById('challengesGrid');
+  grid.innerHTML = '';
+  
+  if (!playerData.dailyChallenges || playerData.dailyChallenges.length === 0) {
+    grid.innerHTML = '<div style="color:#aaa;text-align:center;padding:2rem;">No challenges available. Check back tomorrow!</div>';
+    return;
+  }
+  
+  playerData.dailyChallenges.forEach(function(challenge) {
+    var card = document.createElement('div');
+    card.className = 'acard';
+    card.style.background = challenge.completed ? 'linear-gradient(135deg,#1a3300,#2a5500)' : 'linear-gradient(135deg,#0d0015,#1a0030)';
+    card.style.borderColor = challenge.completed ? '#88ff44' : '#6600cc33';
+    card.style.padding = '1.2rem';
+    
+    var progressText = challenge.type === 'count' ? challenge.progress + '/' + challenge.target : (challenge.completed ? 'Completed!' : 'In Progress');
+    
+    card.innerHTML = 
+      '<div style="color:' + (challenge.completed ? '#88ff44' : '#ffaa44') + ';font-size:1.2rem;font-weight:700;margin-bottom:0.5rem;">' + challenge.name + '</div>' +
+      '<div style="color:#aaa;font-size:0.9rem;margin-bottom:0.8rem;">' + challenge.desc + '</div>' +
+      '<div style="color:#fff;font-size:0.85rem;margin-bottom:0.5rem;">Progress: ' + progressText + '</div>' +
+      '<div style="color:' + (challenge.completed ? '#88ff44' : '#ffdd00') + ';font-size:1rem;font-weight:700;">' + 
+      (challenge.completed ? '✓ CLAIMED' : '💰 ' + challenge.reward + ' Coins') + '</div>';
+    
+    grid.appendChild(card);
+  });
+}
+
+function updateCoinDisplay() {
+  var menuCoins = document.getElementById('menuCoins');
+  if (menuCoins) menuCoins.textContent = playerData.coins;
+}
+
+var gameRunning = false;
+var actIdx = 0;
+var isSurvival = false;
+var survivalWave = 0;
+var survivalKills = 0;
+var rageMode = false;
+var rageModeActive = false;
+var player, enemy, keys;
+var timeLeft, gameTimer;
+var embers = [];
+var shake = {x:0, y:0, t:0};
+var lastT = 0;
+var slowMo = 1.0; // Slow motion multiplier
+var hitPause = 0; // Hit pause timer
+var criticalHit = false; // Critical hit flag
+
+function startAct(i)     { actIdx = i; isSurvival = false; survivalWave = 0; survivalKills = 0; startFight(); }
+function startSurvival() { 
+  actIdx = 0; 
+  isSurvival = true; 
+  survivalWave = 1; 
+  survivalKills = 0;
+  document.getElementById('survivalHUD').style.display = 'block';
+  document.getElementById('survivalWave').textContent = survivalWave;
+  document.getElementById('survivalKills').textContent = survivalKills;
+  document.getElementById('survivalHighScore').textContent = playerData.survivalHighScore || 0;
+  startFight(); 
+}
+
+function startFight() {
+  document.getElementById('pname').textContent = 'STICK';
+  document.getElementById('ename').textContent = ACTS[actIdx].boss;
+  setScreen('fightScreen');
+  
+  // Update controls hint with custom bindings
+  var kb = playerData.keyBindings || {left:'a',right:'d',up:'w',down:'s',punch:'j',kick:'k',special:'l',ultimate:'u',block:'z',dash:'e',grab:'g'};
+  document.getElementById('chint').innerHTML = 
+    kb.left.toUpperCase() + '/' + kb.right.toUpperCase() + ' = Move &nbsp; ' +
+    kb.up.toUpperCase() + ' = Jump &nbsp; ' +
+    kb.down.toUpperCase() + ' = Crouch &nbsp; ' +
+    kb.punch.toUpperCase() + ' = Punch &nbsp; ' +
+    kb.kick.toUpperCase() + ' = Kick &nbsp; ' +
+    kb.special.toUpperCase() + ' = Magic &nbsp; ' +
+    kb.ultimate.toUpperCase() + ' = Ultimate &nbsp; ' +
+    kb.dash.toUpperCase() + ' = Dash &nbsp; ' +
+    kb.block.toUpperCase() + ' = Block/Parry &nbsp; ' +
+    kb.grab.toUpperCase() + ' = Grab';
+  
+  initGame();
+  showBanner('ROUND 1');
+  setTimeout(function(){
+    gameRunning = true;
+    lastT = performance.now();
+    requestAnimationFrame(loop);
+  }, 1600);
+}
+
+function initGame() {
+  var sc  = Math.min(W, H) / 700;
+  var spd = 280 * sc;
+  var d   = ACTS[actIdx].diff;
+  
+  // Get selected character stats
+  var selectedChar = CHARACTERS[playerData.selectedCharacter] || CHARACTERS.shadow;
+  var selectedWeapon = WEAPONS[playerData.selectedWeapon] || WEAPONS.fists;
+  
+  // Apply upgrades
+  var atkBonus = 1 + (playerData.upgrades.attack || 0) * 0.1;
+  var defBonus = 1 + (playerData.upgrades.defense || 0) * 0.1;
+  var spdBonus = 1 + (playerData.upgrades.speed || 0) * 0.1;
+  var engBonus = 1 + (playerData.upgrades.energy || 0) * 0.2;
+
+  player = {
+    x:W*0.22, y:GY, vx:0, vy:0,
+    hp:selectedChar.hp, maxHp:selectedChar.hp, dir:1,
+    state:'idle', onGround:true,
+    attacking:false, atkTimer:0, atkType:'', atkStart:0, hitReg:false,
+    jumpCount:0, jumpPressed:false, speed:spd * selectedChar.spd * spdBonus, jumpPow:520*sc, sc:sc,
+    pRange:115*sc * selectedWeapon.range, kRange:128*sc * selectedWeapon.range,
+    col:selectedChar.color, glow:selectedChar.glow,
+    trail:[], spCool:0, spProj:null, hitFlash:0,
+    isPlayer:true,
+    energy:0, maxEnergy:100,
+    blocking:false, dashCool:0,
+    comboCount:0, comboTimer:0,
+    baseAtk: selectedChar.atk * atkBonus * selectedWeapon.damage,
+    baseDef: selectedChar.def * defBonus,
+    energyRegen: engBonus,
+    weapon: playerData.selectedWeapon,
+    stunned:false, stunnedTimer:0, // Stun mechanics
+    grabbing:false, grabTimer:0, // Grab mechanics
+    airborne:false, juggleCount:0 // Air combo mechanics
+  };
+
+  enemy = {
+    x:W*0.78, y:GY, vx:0, vy:0,
+    hp:100 + d*15, maxHp:100 + d*15, dir:-1,
+    state:'idle', onGround:true,
+    attacking:false, atkTimer:0, atkType:'', atkStart:0, hitReg:false,
+    jumpCount:0, speed:spd*(0.85+d*0.05), jumpPow:520*sc, sc:sc,
+    pRange:108*sc, kRange:118*sc,
+    col:'#2244aa', glow:ACTS[actIdx].color,
+    trail:[], spCool:0, spProj:null, hitFlash:0,
+    aiRT:0, diff:d, isPlayer:false,
+    energy:0, maxEnergy:100,
+    blocking:false, dashCool:0,
+    comboCount:0, comboTimer:0,
+    baseAtk: 12 + d*2,
+    baseDef: 4 + d,
+    energyRegen: 1,
+    weapon: 'fists',
+    stunned:false, stunnedTimer:0,
+    grabbing:false, grabTimer:0,
+    airborne:false, juggleCount:0
+  };
+
+  keys = {};
+  timeLeft = 60 + d * 5;
+  embers = [];
+  for (var ei = 0; ei < 35; ei++) addEmber();
+  
+  // NEW: Apply skill bonuses
+  if (playerData.unlockedSkills.indexOf('energyBoost') !== -1) {
+    player.energy = 50;
+  }
+  if (playerData.unlockedSkills.indexOf('ultimateCharge') !== -1) {
+    player.maxEnergy = 75;
+  }
+  
+  updateBars();
+  if (gameTimer) clearInterval(gameTimer);
+  gameTimer = setInterval(function(){
+    if (!gameRunning) return;
+    timeLeft = Math.max(0, timeLeft - 1);
+    document.getElementById('timer').textContent = timeLeft;
+    if (timeLeft <= 0) endFight(player.hp > enemy.hp ? 'win' : 'lose');
+  }, 1000);
+}
+
+function addEmber() {
+  embers.push({
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() - 0.5) * 0.6,
+    vy: -Math.random() * 0.9 - 0.2,
+    life: 1 + Math.random() * 3, maxLife: 3,
+    size: 1 + Math.random() * 2,
+    col: 'hsl(' + (10 + Math.random()*35) + ',100%,' + (45+Math.random()*30) + '%)'
+  });
+}
+
+function loop(ts) {
+  if (!gameRunning) return;
+  var dt = Math.min((ts - lastT) / 1000, 0.05) * slowMo;
+  lastT = ts;
+  
+  // Hit pause
+  if (hitPause > 0) {
+    hitPause -= 0.016;
+    draw(ts);
+    requestAnimationFrame(loop);
+    return;
+  }
+  
+  update(dt, ts);
+  draw(ts);
+  requestAnimationFrame(loop);
+}
+
+var GRAV = 1200; // Lower gravity for ninja-like floaty jumps
+
+function update(dt) {
+  if (player.hp > 0) updatePlayer(dt);
+  if (enemy.hp  > 0) updateEnemy(dt);
+  if (player.spProj) tickProj(player.spProj, dt);
+  if (enemy.spProj)  tickProj(enemy.spProj,  dt);
+  if (player.spProj && !player.spProj.alive) player.spProj = null;
+  if (enemy.spProj  && !enemy.spProj.alive)  enemy.spProj  = null;
+  checkHits();
+  tickEmbers(dt);
+  tickShake(dt);
+  
+  // NEW: Rage Mode Check
+  if (playerData.unlockedSkills.indexOf('rageMode') !== -1) {
+    var hpPercent = (player.hp / player.maxHp) * 100;
+    if (hpPercent <= 25 && !rageModeActive) {
+      rageModeActive = true;
+      player.baseAtk *= 1.5;
+      player.speed *= 1.3;
+      document.getElementById('rageIndicator').style.display = 'block';
+      setTimeout(function(){ document.getElementById('rageIndicator').style.display = 'none'; }, 2000);
+      showBanner('RAGE MODE ACTIVATED!');
+    } else if (hpPercent > 25 && rageModeActive) {
+      rageModeActive = false;
+      player.baseAtk /= 1.5;
+      player.speed /= 1.3;
+    }
+  }
+}
+
+function updatePlayer(dt) {
+  var f = player;
+  var kb = playerData.keyBindings || {left:'a',right:'d',up:'w',down:'s',punch:'j',kick:'k',special:'l',ultimate:'u',block:'z',dash:'e',grab:'g'};
+  var left   = keys[kb.left] || keys['ArrowLeft']  || keys['mL'];
+  var right  = keys[kb.right] || keys['ArrowRight'] || keys['mR'];
+  var jump   = keys[kb.up] || keys['ArrowUp']    || keys['mJ'];
+  var crouch = keys[kb.down] || keys['ArrowDown']  || keys['mC'];
+  var punch  = keys[kb.punch] || keys['mP'];
+  var kick   = keys[kb.kick] || keys['mK'];
+  var spec   = keys[kb.special] || keys['mS'];
+  var ultimate = keys[kb.ultimate];
+  var dash = keys[kb.dash];
+  var block = keys[kb.block];
+  var grab = keys[kb.grab]; // NEW: Grab key
+  
+  if (punch) console.log('J key detected');
+  if (kick) console.log('K key detected');
+
+  f.atkTimer = Math.max(0, f.atkTimer - dt);
+  f.spCool   = Math.max(0, f.spCool   - dt);
+  f.dashCool = Math.max(0, f.dashCool - dt);
+  f.comboTimer = Math.max(0, f.comboTimer - dt);
+  f.stunnedTimer = Math.max(0, f.stunnedTimer - dt);
+  f.grabTimer = Math.max(0, f.grabTimer - dt);
+  
+  if (f.atkTimer <= 0) f.attacking = false;
+  if (f.comboTimer <= 0) f.comboCount = 0;
+  if (f.stunnedTimer <= 0) f.stunned = false;
+  if (f.grabTimer <= 0) f.grabbing = false;
+  
+  // Can't act while stunned
+  if (f.stunned) {
+    f.vx = 0;
+    f.state = 'stunned';
+    applyPhys(f, dt);
+    clampPos(f);
+    return;
+  }
+  
+  // Blocking with perfect parry window
+  if (block) {
+    f.blocking = true;
+    f.blockStart = f.blockStart || performance.now();
+  } else {
+    f.blocking = false;
+    f.blockStart = null;
+  }
+
+  if (!f.attacking && !f.grabbing) {
+    // Jump - handle first, with debouncing
+    if (jump) {
+      // Allow jump if: on ground (first jump) OR in air with jumps remaining (double jump)
+      if (f.jumpCount < 2 && !f.jumpPressed) {
+        console.log('JUMP TRIGGERED! jumpCount:', f.jumpCount, 'onGround:', f.onGround, 'y:', f.y, 'GY:', GY);
+        f.vy = -(f.jumpPow);
+        f.y -= 5; // Move up slightly to prevent immediate ground collision
+        f.jumpCount++;
+        f.state = 'jump';
+        f.onGround = false; // Force onGround to false when jumping
+        f.jumpPressed = true; // Mark jump as pressed
+      }
+    } else {
+      // Reset jump flag when key is released
+      f.jumpPressed = false;
+    }
+    
+    // Grab/Throw
+    if (grab && f.grabTimer <= 0) {
+      var dist = Math.abs(enemy.x - f.x);
+      if (dist < 80) {
+        f.grabbing = true;
+        f.grabTimer = 0.8;
+        f.state = 'grab';
+        doGrab(f, enemy);
+      }
+    }
+    // Ultimate attack
+    else if (ultimate && f.energy >= 100) {
+      f.energy = 0;
+      doUltimate(f);
+    }
+    // Dash
+    else if (dash && f.dashCool <= 0) {
+      f.dashCool = 1.5;
+      f.vx = f.dir * f.speed * 3;
+      f.energy = Math.min(f.maxEnergy, f.energy + 10);
+    }
+    // Regular attacks
+    else if (punch && f.atkTimer <= 0) { 
+      console.log('PUNCH!', f.isPlayer); 
+      doAtk(f, 'punch');
+      f.comboCount++;
+      f.comboTimer = 1.5;
+    }
+    else if (kick  && f.atkTimer <= 0) { 
+      console.log('KICK!', f.isPlayer); 
+      doAtk(f, 'kick');
+      f.comboCount++;
+      f.comboTimer = 1.5;
+    }
+    else if (spec  && f.atkTimer <= 0 && f.spCool <= 0) { 
+      doSpec(f);
+      f.comboCount++;
+      f.comboTimer = 1.5;
+    }
+    
+    // Movement (works on ground AND in air)
+    f.vx = 0;
+    if (left) { 
+      f.vx = -(f.speed); 
+      f.dir = -1; 
+      if (f.onGround && !f.attacking) f.state = 'walk';
+    }
+    else if (right) { 
+      f.vx = f.speed; 
+      f.dir = 1; 
+      if (f.onGround && !f.attacking) f.state = 'walk';
+    }
+    else if (crouch && f.onGround) { 
+      f.state = 'crouch'; 
+    }
+    else if (f.onGround && !f.attacking && f.state !== 'jump') { 
+      f.state = 'idle'; 
+    }
+  } else {
+    // During attack, allow minimal movement
+    f.vx = 0;
+  }
+
+  applyPhys(f, dt);
+  clampPos(f);
+  updateTrail(f);
+}
+
+function updateEnemy(dt) {
+  var e = enemy;
+  e.atkTimer = Math.max(0, e.atkTimer - dt);
+  e.spCool   = Math.max(0, e.spCool   - dt);
+  e.dashCool = Math.max(0, e.dashCool - dt);
+  e.comboTimer = Math.max(0, e.comboTimer - dt);
+  if (e.atkTimer <= 0) e.attacking = false;
+  if (e.comboTimer <= 0) e.comboCount = 0;
+
+  e.aiRT -= dt;
+  if (e.aiRT <= 0) {
+    var d = e.diff;
+    e.aiRT = Math.max(0.05, 0.4 - d*0.05) * (0.5 + Math.random()*0.5);
+
+    var dx   = player.x - e.x;
+    e.dir    = dx > 0 ? 1 : -1;
+    var dist = Math.abs(dx);
+    
+    // SMART AI DECISIONS
+    
+    // 1. Use Ultimate when energy is full and close
+    if (e.energy >= 100 && dist < 200 && Math.random() < 0.8) {
+      e.energy = 0;
+      doUltimate(e);
+      return;
+    }
+    
+    // 2. Block if player is attacking
+    if (player.attacking && dist < 150 && Math.random() < 0.5 + d*0.08) {
+      e.blocking = true;
+      setTimeout(function(){ e.blocking = false; }, 300);
+      return;
+    } else {
+      e.blocking = false;
+    }
+    
+    // 3. Dash to close distance or escape
+    if (e.dashCool <= 0) {
+      if (dist > 300 && Math.random() < 0.3 + d*0.05) {
+        // Dash forward
+        e.dashCool = 1.5;
+        e.vx = e.dir * e.speed * 3;
+        e.energy = Math.min(e.maxEnergy, e.energy + 10);
+        return;
+      } else if (dist < 80 && e.hp < 30 && Math.random() < 0.4) {
+        // Dash backward to escape
+        e.dashCool = 1.5;
+        e.vx = -e.dir * e.speed * 3;
+        return;
+      }
+    }
+
+    // 4. Attack patterns based on distance
+    if (dist < e.pRange * 1.2) {
+      e.vx = 0;
+      if (e.atkTimer <= 0) {
+        var r = Math.random();
+        var atkChance = 0.6 + d*0.08;
+        
+        if (r < atkChance) {
+          // Combo attacks - chain multiple attacks
+          if (e.comboCount > 0 && Math.random() < 0.7) {
+            // Continue combo
+            if (Math.random() < 0.5) {
+              doAtk(e, 'kick');
+            } else {
+              doAtk(e, 'punch');
+            }
+            e.comboCount++;
+            e.comboTimer = 1.5;
+          } else {
+            // Start new combo
+            doAtk(e, 'punch');
+            e.comboCount = 1;
+            e.comboTimer = 1.5;
+          }
+        } else if (r < atkChance + 0.15 && e.spCool <= 0) {
+          // Use special attack
+          doSpec(e);
+          e.comboCount++;
+          e.comboTimer = 1.5;
+        } else if (Math.random() < 0.2) {
+          // Fake out - move back
+          e.vx = -e.dir * e.speed * 0.5;
+        }
+      }
+    } else if (dist < e.kRange * 1.8) {
+      // Mid range - approach and kick
+      e.vx = e.dir * e.speed * 0.8;
+      e.state = 'walk';
+      if (e.atkTimer <= 0 && Math.random() < 0.35 + d*0.05) {
+        doAtk(e, 'kick');
+        e.comboCount++;
+        e.comboTimer = 1.5;
+      }
+    } else {
+      // Far range - approach aggressively
+      e.vx = e.dir * e.speed * (0.9 + d*0.05);
+      e.state = 'walk';
+    }
+
+    // 5. Jump occasionally to avoid attacks or close distance
+    if (Math.random() < 0.015*d && e.onGround) {
+      e.vy = -(e.jumpPow);
+      e.state = 'jump';
+    }
+    
+    // 6. Predict player movement and intercept
+    if (player.vx !== 0 && dist > 150 && Math.random() < 0.3) {
+      // Move to where player is going
+      var predictX = player.x + player.vx * 0.5;
+      e.dir = predictX > e.x ? 1 : -1;
+      e.vx = e.dir * e.speed * 1.2;
+    }
+  }
+
+  applyPhys(e, dt);
+  clampPos(e);
+  updateTrail(e);
+}
+
+function applyPhys(f, dt) {
+  f.vy += GRAV * dt;
+  f.x  += f.vx * dt;
+  f.y  += f.vy * dt;
+  
+  // Air control - allow direction change while jumping
+  if (!f.onGround && !f.attacking) {
+    var kb = playerData.keyBindings || {left:'a',right:'d'};
+    var left   = keys[kb.left] || keys['ArrowLeft']  || keys['mL'];
+    var right  = keys[kb.right] || keys['ArrowRight'] || keys['mR'];
+    
+    if (left && f.isPlayer) {
+      f.vx = -(f.speed * 0.8); // Slightly reduced air control
+      f.dir = -1;
+    } else if (right && f.isPlayer) {
+      f.vx = f.speed * 0.8;
+      f.dir = 1;
+    }
+  }
+  
+  if (f.y >= GY) {
+    f.y = GY; 
+    f.vy = 0; // No bounce - instant stop
+    f.jumpCount = 0; 
+    f.onGround = true;
+    f.airborne = false; // Reset airborne state on landing
+    f.juggleCount = 0; // Reset juggle count on landing
+    if (f.state === 'jump') f.state = 'idle';
+  } else {
+    f.onGround = false;
+    if (f.vy > 0) f.state = 'jump';
+  }
+}
+
+function clampPos(f) {
+  var m = f.sc * 22 + 20;
+  if (f.x < m)     f.x = m;
+  if (f.x > W - m) f.x = W - m;
+}
+
+function updateTrail(f) {
+  if (f.attacking || f.state === 'walk' || f.state === 'jump') {
+    f.trail.unshift({x:f.x, state:f.state});
+    if (f.trail.length > 5) f.trail.pop();
+  } else {
+    if (f.trail.length > 0) f.trail.pop();
+  }
+}
+
+function doAtk(f, type) {
+  f.attacking = true;
+  f.atkType   = type;
+  f.atkTimer  = type === 'punch' ? 0.25 : 0.35; // Faster attacks
+  f.atkStart  = performance.now();
+  f.hitReg    = false;
+  f.state     = type;
+  
+  // Play attack sound
+  if (sounds) {
+    if (type === 'punch') sounds.punch();
+    else if (type === 'kick') sounds.kick();
+  }
+}
+
+function doSpec(f) {
+  f.attacking = true;
+  f.atkType   = 'special';
+  f.atkTimer  = 0.62;
+  f.spCool    = 4;
+  f.atkStart  = performance.now();
+  f.hitReg    = false;
+  f.state     = 'special';
+  
+  // NEW: Weapon-specific special moves
+  var weaponBonus = 1.0;
+  if (playerData.unlockedSkills.indexOf('weaponMastery') !== -1) {
+    weaponBonus = 1.3;
+  }
+  
+  switch(f.weapon) {
+    case 'sword':
+      // Sword: Fast triple slash projectiles
+      for (var i = 0; i < 3; i++) {
+        setTimeout(function(idx){
+          if (f.hp > 0 && !f.spProj) {
+            f.spProj = {x:f.x, y:GY - (50 + idx*10)*f.sc, vx:f.dir*700*f.sc, alive:true, damage:15*weaponBonus};
+          }
+        }, i*150, i);
+      }
+      break;
+    case 'staff':
+      // Staff: Wide spinning projectile
+      f.spProj = {x:f.x, y:GY - 64*f.sc, vx:f.dir*500*f.sc, alive:true, damage:20*weaponBonus, size:2};
+      break;
+    case 'nunchucks':
+      // Nunchucks: Fast chain attack
+      f.spProj = {x:f.x, y:GY - 64*f.sc, vx:f.dir*800*f.sc, alive:true, damage:12*weaponBonus};
+      break;
+    case 'dualBlades':
+      // Dual Blades: Two projectiles
+      f.spProj = {x:f.x, y:GY - 50*f.sc, vx:f.dir*650*f.sc, alive:true, damage:18*weaponBonus};
+      setTimeout(function(){
+        if (f.hp > 0) {
+          f.spProj = {x:f.x, y:GY - 78*f.sc, vx:f.dir*650*f.sc, alive:true, damage:18*weaponBonus};
+        }
+      }, 200);
+      break;
+    default:
+      // Fists: Standard projectile
+      f.spProj = {x:f.x, y:GY - 64*f.sc, vx:f.dir*600*f.sc, alive:true, damage:15*weaponBonus};
+  }
+}
+
+function doGrab(attacker, target) {
+  // Grab and throw
+  var throwDist = 150 * attacker.sc;
+  var throwHeight = 200 * attacker.sc;
+  
+  target.vx = attacker.dir * throwDist * 3;
+  target.vy = -throwHeight;
+  target.airborne = true;
+  target.juggleCount = 0;
+  
+  applyDmg(target, 15, attacker.glow);
+  showBanner('THROW!');
+  if (sounds && sounds.kick) sounds.kick();
+}
+
+function doUltimate(f) {
+  f.attacking = true;
+  f.atkType   = 'ultimate';
+  f.atkTimer  = 1.2;
+  f.atkStart  = performance.now();
+  f.hitReg    = false;
+  f.state     = 'ultimate';
+  showBanner('ULTIMATE ATTACK!');
+  
+  // Track ultimate uses for player
+  if (f.isPlayer) {
+    playerData.stats.ultimateUses++;
+    savePlayerData();
+    checkAchievements();
+  }
+  
+  // Screen shake
+  shake = {x:0, y:0, t:0.8};
+  
+  // Multiple hit projectiles
+  for (var i = 0; i < 5; i++) {
+    setTimeout(function(idx){
+      if (f.hp > 0) {
+        var proj = {
+          x: f.x, 
+          y: GY - (40 + idx*15)*f.sc, 
+          vx: f.dir*800*f.sc, 
+          alive: true,
+          ultimate: true
+        };
+        if (!f.spProj) f.spProj = proj;
+      }
+    }, i*100, i);
+  }
+}
+
+function tickProj(proj, dt) {
+  proj.x += proj.vx * dt;
+  if (proj.x < 0 || proj.x > W) proj.alive = false;
+}
+
+function checkHits() {
+  hitCheck(player, enemy);
+  hitCheck(enemy, player);
+  projCheck(player, enemy);
+  projCheck(enemy, player);
+}
+
+function hitCheck(atk, tgt) {
+  if (!atk.attacking || atk.atkTimer <= 0.08) { atk.hitReg = false; return; }
+  var range = atk.atkType === 'punch' ? atk.pRange : atk.kRange;
+  var dx    = tgt.x - atk.x;
+  var dy    = Math.abs(tgt.y - atk.y); // Height difference
+  
+  // Height-based hit detection
+  // If target is jumping (in air), ground attacks miss
+  var heightThreshold = 80 * atk.sc; // Attacks can hit if within this height difference
+  
+  // Special case: kicks have more vertical range than punches
+  if (atk.atkType === 'kick') {
+    heightThreshold = 120 * atk.sc; // Kicks can hit higher
+  }
+  
+  // Check if attack connects (horizontal range + height range)
+  if (Math.sign(dx) === atk.dir && Math.abs(dx) < range && dy < heightThreshold && !atk.hitReg) {
+    atk.hitReg = true;
+    var base = atk.atkType === 'punch' ? 8 : 13;
+    var atkMult = atk.baseAtk || 15;
+    var defMult = tgt.baseDef || 5;
+    var dmg = base * (atkMult / 15) - (defMult / 5) * 2;
+    dmg = Math.max(3, dmg); // Minimum damage
+    applyDmg(tgt, dmg, atk.glow);
+    
+    // Play sound
+    if (sounds && sounds.hit) sounds.hit();
+  }
+}
+
+function projCheck(atk, tgt) {
+  if (!atk.spProj || !atk.spProj.alive) return;
+  var dx = Math.abs(atk.spProj.x - tgt.x);
+  var dy = Math.abs(atk.spProj.y - (tgt.y - 64*tgt.sc)); // Use target's actual Y position
+  if (dx < 28*atk.sc && dy < 38*tgt.sc) {
+    applyDmg(tgt, 20, atk.glow);
+    atk.spProj.alive = false;
+  }
+}
+
+function applyDmg(tgt, dmg, col) {
+  var attacker = tgt === player ? enemy : player;
+  
+  // Perfect Parry - block within 0.2s of attack
+  if (tgt.blocking && tgt.blockStart) {
+    var blockTime = performance.now() - tgt.blockStart;
+    if (blockTime < 200) {
+      // Perfect parry!
+      dmg = 0;
+      showBanner('PERFECT PARRY!');
+      if (sounds && sounds.ultimate) sounds.ultimate();
+      
+      // Track perfect parries for player
+      if (tgt.isPlayer) {
+        playerData.stats.perfectParries++;
+        savePlayerData();
+        checkAchievements();
+      }
+      
+      // Stun attacker
+      attacker.stunned = true;
+      attacker.stunnedTimer = 1.0;
+      attacker.state = 'stunned';
+      
+      // NEW: Counter Attack skill
+      if (tgt.isPlayer && playerData.unlockedSkills.indexOf('counterAttack') !== -1) {
+        setTimeout(function(){
+          applyDmg(attacker, 25, tgt.glow);
+          showBanner('COUNTER!');
+        }, 100);
+      }
+      
+      // Flash effect
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+      
+      return;
+    }
+  }
+  
+  // NEW: Critical hit chance (enhanced by skill)
+  var critChance = 0.2;
+  if (attacker.isPlayer && playerData.unlockedSkills.indexOf('criticalStrike') !== -1) {
+    critChance = 0.35;
+  }
+  
+  var isCrit = Math.random() < critChance;
+  if (isCrit) {
+    dmg *= 2;
+    criticalHit = true;
+    showBanner('CRITICAL HIT!');
+    if (sounds && sounds.ultimate) sounds.ultimate();
+    
+    // Screen flash for crit
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,0,0.3)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+  
+  // NEW: Combo Master skill
+  if (attacker.isPlayer && playerData.unlockedSkills.indexOf('comboMaster') !== -1 && attacker.comboCount > 1) {
+    dmg *= 1.5;
+  }
+  
+  // Blocking reduces damage
+  if (tgt.blocking) {
+    dmg *= 0.3;
+    showBanner('BLOCKED!');
+    if (sounds && sounds.block) sounds.block();
+  } else {
+    // Hit pause on normal hits
+    hitPause = isCrit ? 0.15 : 0.05;
+  }
+  
+  // Air juggle bonus damage
+  if (tgt.airborne && !tgt.onGround) {
+    tgt.juggleCount++;
+    dmg *= (1 + tgt.juggleCount * 0.2);
+    showBanner('AIR COMBO x' + tgt.juggleCount + '!');
+    
+    // Track max juggle for player attacks
+    var attacker = tgt === player ? enemy : player;
+    if (attacker.isPlayer && tgt.juggleCount > playerData.stats.maxJuggle) {
+      playerData.stats.maxJuggle = tgt.juggleCount;
+      savePlayerData();
+      checkAchievements();
+    }
+    
+    // Keep them in air
+    tgt.vy = -150;
+  }
+  
+  // Wall bounce
+  var m = tgt.sc * 22 + 20;
+  if (tgt.x <= m || tgt.x >= W - m) {
+    tgt.vx = -tgt.vx * 0.8;
+    dmg *= 1.5;
+    showBanner('WALL BOUNCE!');
+    shake = {x:0, y:0, t:0.3};
+  }
+  
+  tgt.hp = Math.max(0, tgt.hp - dmg);
+  tgt.hitFlash = 1.0;
+  
+  // Stronger shake for crits
+  shake = {x:0, y:0, t: isCrit ? 0.3 : 0.14};
+  
+  spawnHitParts(tgt.x, GY - 62*tgt.sc, isCrit ? '#ffff00' : col);
+  
+  // Attacker gains energy
+  attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + dmg * 0.5);
+  
+  // NEW: Life Steal skill
+  if (attacker.isPlayer && playerData.unlockedSkills.indexOf('lifeSteal') !== -1) {
+    var healAmount = dmg * 0.1;
+    attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
+    updateBars();
+  }
+  
+  // Combo bonus
+  if (attacker.comboCount > 1) {
+    var comboDmg = dmg * (attacker.comboCount * 0.1);
+    tgt.hp = Math.max(0, tgt.hp - comboDmg);
+    showBanner('COMBO x' + attacker.comboCount + '!');
+  }
+  
+  updateBars();
+  
+  // Death with slow-mo
+  if (tgt.hp <= 0) {
+    tgt.state = 'dead';
+    tgt.deathStart = performance.now();
+    slowMo = 0.3; // Slow motion on death
+    setTimeout(function(){ 
+      slowMo = 1.0;
+      endFight(tgt === player ? 'lose' : 'win'); 
+    }, 1200);
+  }
+  
+  criticalHit = false;
+}
+
+function spawnHitParts(x, y, col) {
+  for (var i = 0; i < 9; i++) {
+    embers.push({
+      x:x, y:y,
+      vx:(Math.random()-0.5)*210,
+      vy:(Math.random()-0.5)*210 - 40,
+      life:0.5, maxLife:0.5,
+      size:2+Math.random()*3, col:col
+    });
+  }
+}
+
+function tickEmbers(dt) {
+  for (var i = embers.length - 1; i >= 0; i--) {
+    var e = embers[i];
+    e.x    += e.vx * dt;
+    e.y    += e.vy * dt;
+    e.vy   += 55 * dt;
+    e.life -= dt;
+    if (e.life <= 0) embers.splice(i, 1);
+  }
+  while (embers.length < 35) addEmber();
+}
+
+function tickShake(dt) {
+  if (shake.t > 0) {
+    shake.t -= dt;
+    shake.x  = (Math.random() - 0.5) * 12;
+    shake.y  = (Math.random() - 0.5) * 8;
+  } else {
+    shake.x *= 0.75;
+    shake.y *= 0.75;
+  }
+}
+
+function updateBars() {
+  document.getElementById('php').style.width = Math.max(0, player.hp/player.maxHp*100) + '%';
+  document.getElementById('ehp').style.width = Math.max(0, enemy.hp /enemy.maxHp *100) + '%';
+  document.getElementById('peng').style.width = Math.max(0, player.energy/player.maxEnergy*100) + '%';
+  document.getElementById('eeng').style.width = Math.max(0, enemy.energy /enemy.maxEnergy *100) + '%';
+}
+
+// ---- DRAW ----
+
+function draw(now) {
+  ctx.save();
+  ctx.translate(shake.x, shake.y);
+  drawBG();
+  drawFighter(player, now);
+  drawFighter(enemy,  now);
+  if (player.spProj && player.spProj.alive) drawProj(player.spProj, player.glow, player.sc);
+  if (enemy.spProj  && enemy.spProj.alive)  drawProj(enemy.spProj,  enemy.glow,  enemy.sc);
+  ctx.restore();
+  drawVignette();
+}
+
+function drawBG() {
+  // Blue forest background gradient
+  var sg = ctx.createLinearGradient(0,0,0,H);
+  sg.addColorStop(0,'#1a3a5c');
+  sg.addColorStop(0.5,'#2a4a6c');
+  sg.addColorStop(1,'#1a2a4c');
+  ctx.fillStyle = sg;
+  ctx.fillRect(0,0,W,H);
+
+  // Forest pillars/trees
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  for (var i = 0; i < 12; i++) {
+    var px = (i * W/11) + (i%2)*30;
+    var ph = H*0.65 + (i%3)*H*0.1;
+    var pw = W*0.08;
+    
+    // Pillar gradient
+    var pg = ctx.createLinearGradient(px, GY-ph, px, GY);
+    pg.addColorStop(0,'#0a1a3a');
+    pg.addColorStop(1,'#1a2a4a');
+    ctx.fillStyle = pg;
+    ctx.fillRect(px, GY-ph, pw, ph);
+    
+    // Pillar details
+    ctx.fillStyle = '#0a1530';
+    ctx.fillRect(px+pw*0.1, GY-ph+20, pw*0.8, 8);
+    ctx.fillRect(px+pw*0.1, GY-ph+ph*0.3, pw*0.8, 8);
+  }
+  ctx.restore();
+
+  // Atmospheric fog layers
+  for (var f = 0; f < 3; f++) {
+    ctx.save();
+    ctx.globalAlpha = 0.15 - f*0.03;
+    ctx.fillStyle = '#4a6a8c';
+    ctx.fillRect(0, GY - (f+1)*H*0.2, W, H*0.15);
+    ctx.restore();
+  }
+
+  drawBuildings();
+
+  // ground
+  var gg = ctx.createLinearGradient(0,GY,0,GY+H*0.24);
+  gg.addColorStop(0,'#0a1a2a');
+  gg.addColorStop(1,'#050a15');
+  ctx.fillStyle = gg;
+  ctx.fillRect(0,GY,W,H);
+
+  // glow line
+  ctx.save();
+  ctx.shadowBlur = 14; ctx.shadowColor = '#4a6a8c88';
+  ctx.strokeStyle = '#2a4a6c55'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0,GY); ctx.lineTo(W,GY); ctx.stroke();
+  ctx.restore();
+
+  // embers
+  for (var j = 0; j < embers.length; j++) {
+    var em = embers[j];
+    ctx.save();
+    ctx.globalAlpha = Math.min(em.life / (em.maxLife||1), 1) * 0.75;
+    ctx.fillStyle = em.col;
+    ctx.shadowBlur = 5; ctx.shadowColor = em.col;
+    ctx.beginPath(); ctx.arc(em.x, em.y, em.size, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawBuildings() {
+  var blds = [
+    {x:0.04,w:0.055,h:0.34},{x:0.11,w:0.04,h:0.5},{x:0.16,w:0.065,h:0.29},
+    {x:0.24,w:0.03,h:0.44},{x:0.64,w:0.065,h:0.39},{x:0.72,w:0.05,h:0.54},
+    {x:0.78,w:0.075,h:0.31},{x:0.87,w:0.04,h:0.47},{x:0.92,w:0.055,h:0.37}
+  ];
+  ctx.save(); ctx.globalAlpha = 0.17;
+  for (var bi = 0; bi < blds.length; bi++) {
+    var b  = blds[bi];
+    var bh = H*b.h, bx = W*b.x, by = GY-bh, bw = W*b.w;
+    ctx.fillStyle = '#1e0038';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = '#ffcc6633';
+    var rows = Math.floor(bh/20), cols = Math.floor(bw/14);
+    for (var rr = 0; rr < rows; rr++) {
+      for (var cc = 0; cc < cols; cc++) {
+        if ((rr*7+cc*3)%5 < 2) ctx.fillRect(bx+cc*14+3, by+rr*20+5, 6, 7);
+      }
+    }
+  }
+  ctx.restore();
+}
+
+function drawVignette() {
+  var v = ctx.createRadialGradient(W/2,H/2,H*0.28,W/2,H/2,H*0.72);
+  v.addColorStop(0,'transparent');
+  v.addColorStop(1,'rgba(0,0,0,0.52)');
+  ctx.fillStyle = v;
+  ctx.fillRect(0,0,W,H);
+}
+
+function drawFighter(f, now) {
+  if (f.hp <= 0 && f.state === 'dead') {
+    // Death animation - fall down
+    var deathTime = (now - (f.deathStart || now)) / 1000;
+    var fallProg = Math.min(1, deathTime / 0.8);
+    
+    ctx.save();
+    ctx.globalAlpha = 1 - fallProg * 0.5;
+    ctx.translate(f.x, GY);
+    ctx.rotate(fallProg * Math.PI / 2 * f.dir);
+    ctx.translate(-f.x, -GY);
+    
+    var cx = f.x;
+    var s = f.sc;
+    
+    ctx.fillStyle = f.col;
+    ctx.strokeStyle = f.col;
+    drawBody(ctx, cx, GY, f.dir, s, 'idle', f.col, now, f.isPlayer, f);
+    ctx.restore();
+    return;
+  }
+  
+  if (f.hp <= 0) return;
+  var cx = f.x, s = f.sc;
+
+  // ground shadow
+  ctx.save(); ctx.globalAlpha = 0.22; ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.ellipse(cx, GY+4*s, 18*s, 5*s, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // trail - DISABLED FOR TESTING
+  /*
+  for (var ti = 0; ti < f.trail.length; ti++) {
+    var tr = f.trail[ti];
+    ctx.save();
+    ctx.globalAlpha = (ti/f.trail.length)*0.22;
+    ctx.fillStyle = f.glow; ctx.strokeStyle = f.glow;
+    ctx.shadowBlur = 10; ctx.shadowColor = f.glow;
+    drawBody(ctx, tr.x, f.dir, s, f.state, f.glow, now, f.isPlayer, f);
+    ctx.restore();
+  }
+  */
+
+  // glow
+  ctx.save(); ctx.globalAlpha = 0.32;
+  ctx.fillStyle = f.glow; ctx.strokeStyle = f.glow;
+  ctx.shadowBlur = 28; ctx.shadowColor = f.glow;
+  drawBody(ctx, cx, f.y, f.dir, s, f.state, f.glow, now, f.isPlayer, f);
+  ctx.restore();
+
+  // solid
+  ctx.save();
+  ctx.fillStyle = f.col; ctx.strokeStyle = f.col;
+  ctx.shadowBlur = 7; ctx.shadowColor = f.glow + '55';
+  drawBody(ctx, cx, f.y, f.dir, s, f.state, f.col, now, f.isPlayer, f);
+  ctx.restore();
+  
+  // PHASE 4: Weapon Rendering (actual weapon shapes, not icons)
+  if (f.weapon && f.weapon !== 'fists') {
+    drawWeapon(ctx, f, cx, f.y, s, now);
+  }
+
+  // PHASE 5: Equipment/Armor rendering
+  if (f.isPlayer) {
+    drawEquipment(ctx, f, cx, f.y, s);
+  }
+
+  // Glowing eye (Shadow Fight 2 style)
+  ctx.save();
+  ctx.fillStyle = f.glow; 
+  ctx.shadowBlur = 20 * s; 
+  ctx.shadowColor = f.glow;
+  var eyeOff = f.dir > 0 ? 7*s : -7*s;
+  var eyeY = f.y - 88*s + (f.state==='crouch' ? 14*s : 0);
+  ctx.beginPath(); 
+  ctx.arc(cx + eyeOff, eyeY, 3*s, 0, Math.PI*2); 
+  ctx.fill();
+  ctx.restore();
+  
+  // PHASE 8: Status effects
+  if (f.stunned) {
+    ctx.save();
+    ctx.font = (20*s) + 'px Arial';
+    ctx.fillStyle = '#ffff00';
+    ctx.shadowBlur = 15 * s;
+    ctx.shadowColor = '#ffff00';
+    var starX = cx - 15*s;
+    var starY = f.y - 110*s;
+    for (var si = 0; si < 3; si++) {
+      ctx.fillText('★', starX + si*15*s, starY + Math.sin(performance.now()/100 + si)*5*s);
+    }
+    ctx.restore();
+  }
+
+  // PHASE 6: Hit flash effect (enhanced)
+  if (f.hitFlash > 0) {
+    ctx.save();
+    ctx.globalAlpha = f.hitFlash * 0.5;
+    ctx.fillStyle = '#fff'; 
+    ctx.shadowBlur = 40 * s; 
+    ctx.shadowColor = '#fff';
+    ctx.beginPath(); 
+    ctx.arc(cx, f.y - 60*s, 35*s, 0, Math.PI*2); 
+    ctx.fill();
+    
+    // Impact particles
+    for (var ip = 0; ip < 8; ip++) {
+      var angle = (ip / 8) * Math.PI * 2;
+      var dist = 30 * s * f.hitFlash;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(angle) * dist, f.y - 60*s + Math.sin(angle) * dist, 2*s, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+    f.hitFlash = Math.max(0, f.hitFlash - 0.06);
+  }
+
+  // PHASE 6: Energy aura when energy is high
+  if (f.energy > 70) {
+    ctx.save();
+    var auraAlpha = (f.energy - 70) / 30 * 0.3;
+    ctx.globalAlpha = auraAlpha * (0.8 + Math.sin(now / 200) * 0.2);
+    ctx.strokeStyle = f.glow;
+    ctx.lineWidth = 3 * s;
+    ctx.shadowBlur = 25 * s;
+    ctx.shadowColor = f.glow;
+    ctx.beginPath();
+    ctx.arc(cx, f.y - 50*s, 45*s, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (f.attacking && f.atkTimer > 0.08) drawAtkFx(f, now);
+}
+
+function drawWeapon(ctx, f, cx, cy, s, now) {
+  var weapon = WEAPONS[f.weapon];
+  if (!weapon) return;
+  
+  var handX = cx + f.dir * 25 * s;
+  var handY = cy - 70 * s;
+  
+  ctx.save();
+  ctx.fillStyle = '#000';
+  ctx.strokeStyle = f.glow;
+  ctx.lineWidth = 2 * s;
+  ctx.shadowBlur = 12 * s;
+  ctx.shadowColor = f.glow;
+  
+  // Weapon trail during attacks
+  if (f.attacking && f.atkTimer > 0.1) {
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    ctx.strokeStyle = f.glow;
+    ctx.lineWidth = 4 * s;
+    ctx.shadowBlur = 20 * s;
+    
+    var trailAngle = f.dir > 0 ? -Math.PI/4 : Math.PI/4;
+    for (var ti = 0; ti < 3; ti++) {
+      var trailDist = (ti + 1) * 15 * s;
+      ctx.beginPath();
+      ctx.arc(handX + Math.cos(trailAngle) * trailDist, 
+              handY + Math.sin(trailAngle) * trailDist, 
+              30 * s, trailAngle - Math.PI/3, trailAngle + Math.PI/3);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  
+  // Draw weapon based on type
+  if (f.weapon === 'sword') {
+    // Sword blade
+    ctx.beginPath();
+    ctx.moveTo(handX, handY);
+    ctx.lineTo(handX + f.dir * 45 * s, handY - 5 * s);
+    ctx.lineTo(handX + f.dir * 50 * s, handY - 3 * s);
+    ctx.lineTo(handX + f.dir * 45 * s, handY + 5 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    
+    // Guard
+    ctx.beginPath();
+    ctx.moveTo(handX - f.dir * 3 * s, handY - 8 * s);
+    ctx.lineTo(handX + f.dir * 3 * s, handY + 8 * s);
+    ctx.stroke();
+    
+  } else if (f.weapon === 'staff') {
+    // Long staff
+    ctx.lineWidth = 4 * s;
+    ctx.beginPath();
+    ctx.moveTo(handX - f.dir * 30 * s, handY + 20 * s);
+    ctx.lineTo(handX + f.dir * 30 * s, handY - 20 * s);
+    ctx.stroke();
+    
+    // Staff ends
+    ctx.beginPath();
+    ctx.arc(handX - f.dir * 30 * s, handY + 20 * s, 4 * s, 0, Math.PI * 2);
+    ctx.arc(handX + f.dir * 30 * s, handY - 20 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+    
+  } else if (f.weapon === 'nunchucks') {
+    // Two sticks
+    ctx.lineWidth = 3 * s;
+    var swing = Math.sin(now / 100) * 10 * s;
+    
+    ctx.beginPath();
+    ctx.moveTo(handX, handY);
+    ctx.lineTo(handX + f.dir * 15 * s, handY - 5 * s);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(handX + f.dir * 20 * s, handY + swing);
+    ctx.lineTo(handX + f.dir * 35 * s, handY + 5 * s + swing);
+    ctx.stroke();
+    
+    // Chain
+    ctx.lineWidth = 1 * s;
+    ctx.beginPath();
+    ctx.moveTo(handX + f.dir * 15 * s, handY - 5 * s);
+    ctx.quadraticCurveTo(handX + f.dir * 17 * s, handY + swing/2, 
+                         handX + f.dir * 20 * s, handY + swing);
+    ctx.stroke();
+    
+  } else if (f.weapon === 'dualBlades') {
+    // Two short blades
+    // Right blade
+    ctx.beginPath();
+    ctx.moveTo(handX, handY);
+    ctx.lineTo(handX + f.dir * 25 * s, handY - 3 * s);
+    ctx.lineTo(handX + f.dir * 28 * s, handY);
+    ctx.lineTo(handX + f.dir * 25 * s, handY + 3 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    
+    // Left blade
+    var leftHandX = cx - f.dir * 20 * s;
+    ctx.beginPath();
+    ctx.moveTo(leftHandX, handY + 10 * s);
+    ctx.lineTo(leftHandX - f.dir * 25 * s, handY + 7 * s);
+    ctx.lineTo(leftHandX - f.dir * 28 * s, handY + 10 * s);
+    ctx.lineTo(leftHandX - f.dir * 25 * s, handY + 13 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  
+  ctx.restore();
+}
+
+function drawEquipment(ctx, f, cx, cy, s) {
+  // Draw visible equipment/armor pieces
+  var upgradeLevel = (playerData.upgrades.attack || 0) + 
+                     (playerData.upgrades.defense || 0) + 
+                     (playerData.upgrades.speed || 0);
+  
+  if (upgradeLevel > 5) {
+    // Helmet/headgear
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.strokeStyle = f.glow;
+    ctx.lineWidth = 2 * s;
+    ctx.shadowBlur = 10 * s;
+    ctx.shadowColor = f.glow;
+    
+    var headY = cy - 88 * s;
+    ctx.beginPath();
+    ctx.arc(cx, headY, 16 * s, Math.PI, Math.PI * 2);
+    ctx.stroke();
+    
+    // Helmet crest
+    ctx.beginPath();
+    ctx.moveTo(cx - 5 * s, headY - 12 * s);
+    ctx.lineTo(cx, headY - 20 * s);
+    ctx.lineTo(cx + 5 * s, headY - 12 * s);
+    ctx.stroke();
+    ctx.restore();
+  }
+  
+  if (upgradeLevel > 10) {
+    // Shoulder pads
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.strokeStyle = f.glow;
+    ctx.lineWidth = 2 * s;
+    ctx.shadowBlur = 10 * s;
+    ctx.shadowColor = f.glow;
+    
+    var shoulderY = cy - 75 * s;
+    
+    // Left shoulder
+    ctx.beginPath();
+    ctx.arc(cx - 20 * s, shoulderY, 8 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Right shoulder
+    ctx.beginPath();
+    ctx.arc(cx + 20 * s, shoulderY, 8 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+  
+  if (upgradeLevel > 15) {
+    // Belt/waist armor
+    ctx.save();
+    ctx.strokeStyle = f.glow;
+    ctx.lineWidth = 3 * s;
+    ctx.shadowBlur = 10 * s;
+    ctx.shadowColor = f.glow;
+    
+    var waistY = cy - 45 * s;
+    ctx.beginPath();
+    ctx.moveTo(cx - 15 * s, waistY);
+    ctx.lineTo(cx + 15 * s, waistY);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawBody(ctx, cx, cy, dir, s, state, col, now, isPlayer, fighter) {
+  var t = now / 1000;
+  
+  // Animation states
+  var cr = state === 'crouch';
+  var jp = state === 'jump';
+  var pn = state === 'punch';
+  var kk = state === 'kick';
+  var sp = state === 'special';
+  var walk = state === 'walk';
+  
+  // Calculate animation progress for attacks
+  var atkProg = 0;
+  if (fighter && fighter.atkStart && (pn || kk)) {
+    var atkAge = now - fighter.atkStart;
+    var atkDuration = pn ? 250 : 350;
+    atkProg = Math.min(1, atkAge / atkDuration);
+  }
+  
+  // Breathing animation for idle
+  var breathe = (state === 'idle') ? Math.sin(t * 2) * 1.5 * s : 0;
+  
+  // Walking animation
+  var walkCycle = walk ? Math.sin(t * 10) : 0;
+  
+  // Body proportions (realistic human ratios)
+  var headSize = 12 * s;
+  var neckH = 6 * s;
+  var torsoH = 35 * s;
+  var waistH = 15 * s;
+  var thighH = 25 * s;
+  var calfH = 25 * s;
+  var armUpperH = 20 * s;
+  var armLowerH = 18 * s;
+  
+  // Y positions
+  var headY = cy - 100 * s + breathe;
+  var neckY = headY + headSize + neckH / 2;
+  var shoulderY = neckY + neckH / 2;
+  var chestY = shoulderY + torsoH / 2;
+  var waistY = shoulderY + torsoH;
+  var hipY = waistY + waistH;
+  
+  // Setup for silhouette rendering
+  ctx.fillStyle = '#000'; // Pure black silhouette
+  ctx.strokeStyle = col; // Colored outline
+  ctx.lineWidth = 2 * s;
+  ctx.shadowBlur = 15 * s;
+  ctx.shadowColor = col;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  
+  // Start building the silhouette path
+  ctx.beginPath();
+  
+  // === CROUCH POSE ===
+  if (cr) {
+    var crouchY = cy - 40 * s;
+    
+    // Head
+    ctx.moveTo(cx + headSize, crouchY - 20 * s);
+    ctx.arc(cx, crouchY - 20 * s, headSize, 0, Math.PI * 2);
+    
+    // Crouched body
+    ctx.moveTo(cx - 15 * s, crouchY);
+    ctx.lineTo(cx - 15 * s, crouchY + 25 * s);
+    ctx.lineTo(cx - 25 * s, cy);
+    ctx.lineTo(cx + 25 * s, cy);
+    ctx.lineTo(cx + 15 * s, crouchY + 25 * s);
+    ctx.lineTo(cx + 15 * s, crouchY);
+    ctx.closePath();
+    
+    ctx.fill();
+    ctx.stroke();
+    return;
+  }
+  
+  // === HEAD & NECK ===
+  ctx.arc(cx, headY, headSize, 0, Math.PI * 2);
+  
+  // Neck
+  ctx.moveTo(cx - 5 * s, headY + headSize);
+  ctx.lineTo(cx - 5 * s, neckY);
+  ctx.lineTo(cx + 5 * s, neckY);
+  ctx.lineTo(cx + 5 * s, headY + headSize);
+  
+  // === TORSO ===
+  var shoulderW = 18 * s;
+  var waistW = 12 * s;
+  
+  // Shoulders
+  ctx.moveTo(cx - shoulderW, shoulderY);
+  ctx.lineTo(cx - shoulderW, shoulderY + 8 * s);
+  
+  // Chest (curved)
+  ctx.quadraticCurveTo(cx - waistW, chestY, cx - waistW, waistY);
+  
+  // Waist to hips
+  ctx.lineTo(cx - waistW, hipY);
+  
+  // === LEGS ===
+  if (kk) {
+    // KICKING POSE
+    var kickExt = atkProg < 0.4 ? atkProg / 0.4 : (atkProg < 0.7 ? 1 : 1 - (atkProg - 0.7) / 0.3);
+    
+    // Standing leg
+    ctx.lineTo(cx - dir * 8 * s, hipY);
+    ctx.lineTo(cx - dir * 10 * s, hipY + thighH);
+    ctx.lineTo(cx - dir * 8 * s, cy);
+    ctx.lineTo(cx - dir * 2 * s, cy);
+    ctx.lineTo(cx - dir * 4 * s, hipY + thighH);
+    ctx.lineTo(cx - dir * 6 * s, hipY);
+    
+    // Kicking leg
+    var kickDist = 50 * s * kickExt;
+    var kickLift = 55 * s * kickExt;
+    var kickX = cx + dir * kickDist;
+    var kickY = cy - 50 * s - kickLift;
+    
+    ctx.moveTo(cx + dir * 6 * s, hipY);
+    ctx.lineTo(cx + dir * kickDist * 0.5, hipY + 10 * s - kickLift * 0.3);
+    ctx.lineTo(kickX, kickY);
+    ctx.lineTo(kickX + dir * 12 * s, kickY);
+    ctx.lineTo(kickX + dir * 10 * s, kickY + 8 * s);
+    ctx.lineTo(cx + dir * kickDist * 0.5, hipY + 15 * s - kickLift * 0.3);
+    ctx.lineTo(cx + dir * 8 * s, hipY);
+    
+  } else if (jp) {
+    // JUMPING POSE - legs tucked
+    var tuck = Math.sin(t * 6) * 5 * s;
+    
+    // Left leg
+    ctx.lineTo(cx - 8 * s, hipY);
+    ctx.lineTo(cx - 15 * s - tuck, hipY + 20 * s);
+    ctx.lineTo(cx - 12 * s - tuck, hipY + 35 * s);
+    ctx.lineTo(cx - 6 * s - tuck, hipY + 35 * s);
+    ctx.lineTo(cx - 8 * s - tuck, hipY + 20 * s);
+    ctx.lineTo(cx - 6 * s, hipY);
+    
+    // Right leg
+    ctx.moveTo(cx + 6 * s, hipY);
+    ctx.lineTo(cx + 8 * s + tuck, hipY + 20 * s);
+    ctx.lineTo(cx + 6 * s + tuck, hipY + 35 * s);
+    ctx.lineTo(cx + 12 * s + tuck, hipY + 35 * s);
+    ctx.lineTo(cx + 15 * s + tuck, hipY + 20 * s);
+    ctx.lineTo(cx + 8 * s, hipY);
+    
+  } else {
+    // STANDING/WALKING LEGS
+    var legSwing = walkCycle * 8 * s;
+    
+    // Left leg
+    ctx.lineTo(cx - 8 * s, hipY);
+    ctx.lineTo(cx - 10 * s - legSwing, hipY + thighH);
+    ctx.lineTo(cx - 8 * s - legSwing, cy);
+    ctx.lineTo(cx - 2 * s - legSwing, cy);
+    ctx.lineTo(cx - 4 * s - legSwing, hipY + thighH);
+    ctx.lineTo(cx - 6 * s, hipY);
+    
+    // Right leg
+    ctx.moveTo(cx + 6 * s, hipY);
+    ctx.lineTo(cx + 4 * s + legSwing, hipY + thighH);
+    ctx.lineTo(cx + 2 * s + legSwing, cy);
+    ctx.lineTo(cx + 8 * s + legSwing, cy);
+    ctx.lineTo(cx + 10 * s + legSwing, hipY + thighH);
+    ctx.lineTo(cx + 8 * s, hipY);
+  }
+  
+  // === ARMS ===
+  if (pn) {
+    // PUNCHING POSE
+    var punchExt = atkProg < 0.3 ? atkProg / 0.3 : (atkProg < 0.6 ? 1 : 1 - (atkProg - 0.6) / 0.4);
+    
+    // Back arm (pulled back)
+    var backArmX = cx - dir * (20 + punchExt * 5) * s;
+    ctx.moveTo(cx - dir * shoulderW, shoulderY);
+    ctx.lineTo(backArmX, shoulderY + 15 * s);
+    ctx.lineTo(backArmX - dir * 5 * s, shoulderY + 20 * s);
+    ctx.lineTo(backArmX - dir * 3 * s, shoulderY + 12 * s);
+    ctx.lineTo(cx - dir * shoulderW, shoulderY + 5 * s);
+    
+    // Punching arm (extended)
+    var punchDist = 55 * s * punchExt;
+    var punchX = cx + dir * (shoulderW + punchDist);
+    var punchY = shoulderY + 10 * s;
+    
+    ctx.moveTo(cx + dir * shoulderW, shoulderY);
+    ctx.lineTo(punchX - dir * 10 * s, punchY - 3 * s);
+    ctx.lineTo(punchX, punchY);
+    ctx.lineTo(punchX + dir * 8 * s, punchY);
+    ctx.lineTo(punchX + dir * 8 * s, punchY + 8 * s);
+    ctx.lineTo(punchX, punchY + 8 * s);
+    ctx.lineTo(punchX - dir * 10 * s, punchY + 5 * s);
+    ctx.lineTo(cx + dir * shoulderW, shoulderY + 5 * s);
+    
+  } else if (sp) {
+    // SPECIAL ATTACK POSE - arms raised
+    var wave = Math.sin(t * 10) * 3 * s;
+    
+    // Left arm up
+    ctx.moveTo(cx - shoulderW, shoulderY);
+    ctx.lineTo(cx - 25 * s, shoulderY - 20 * s + wave);
+    ctx.lineTo(cx - 22 * s, shoulderY - 25 * s + wave);
+    ctx.lineTo(cx - 18 * s, shoulderY - 20 * s + wave);
+    ctx.lineTo(cx - shoulderW, shoulderY + 5 * s);
+    
+    // Right arm up
+    ctx.moveTo(cx + shoulderW, shoulderY);
+    ctx.lineTo(cx + 25 * s, shoulderY - 20 * s - wave);
+    ctx.lineTo(cx + 22 * s, shoulderY - 25 * s - wave);
+    ctx.lineTo(cx + 18 * s, shoulderY - 20 * s - wave);
+    ctx.lineTo(cx + shoulderW, shoulderY + 5 * s);
+    
+  } else {
+    // IDLE/GUARD STANCE
+    var armBreathe = breathe * 0.5;
+    var armSwing = walkCycle * 5 * s;
+    
+    // Front arm (guard position)
+    var frontArmX = cx + dir * 22 * s - armSwing;
+    var frontArmY = shoulderY + 5 * s + armBreathe;
+    ctx.moveTo(cx + dir * shoulderW, shoulderY);
+    ctx.lineTo(frontArmX, frontArmY);
+    ctx.lineTo(frontArmX + dir * 5 * s, frontArmY + 5 * s);
+    ctx.lineTo(frontArmX + dir * 3 * s, frontArmY + 10 * s);
+    ctx.lineTo(frontArmX - dir * 2 * s, frontArmY + 8 * s);
+    ctx.lineTo(cx + dir * shoulderW, shoulderY + 5 * s);
+    
+    // Back arm
+    var backArmX = cx - dir * 18 * s + armSwing;
+    var backArmY = shoulderY + 12 * s + armBreathe;
+    ctx.moveTo(cx - dir * shoulderW, shoulderY);
+    ctx.lineTo(backArmX, backArmY);
+    ctx.lineTo(backArmX - dir * 5 * s, backArmY + 5 * s);
+    ctx.lineTo(backArmX - dir * 3 * s, backArmY + 10 * s);
+    ctx.lineTo(backArmX + dir * 2 * s, backArmY + 8 * s);
+    ctx.lineTo(cx - dir * shoulderW, shoulderY + 5 * s);
+  }
+  
+  // Complete the torso on the right side
+  ctx.moveTo(cx + waistW, hipY);
+  ctx.lineTo(cx + waistW, waistY);
+  ctx.quadraticCurveTo(cx + waistW, chestY, cx + shoulderW, shoulderY + 8 * s);
+  ctx.lineTo(cx + shoulderW, shoulderY);
+  
+  // Fill and stroke the complete silhouette
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+function drawAtkFx(f, now) {
+  var cx = f.x, cy = f.y, dir = f.dir, s = f.sc;
+  var age = performance.now() - f.atkStart;
+  var a = Math.max(0, 1 - age/280);
+  
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = f.glow;
+  ctx.fillStyle = f.glow;
+  ctx.shadowBlur = 25 * s;
+  ctx.shadowColor = f.glow;
+  
+  if (f.atkType === 'punch') {
+    // PHASE 6: Enhanced punch effect with slash arc
+    var punchProg = Math.min(1, age / 250);
+    var punchDist = 60 * s * punchProg;
+    var punchY = cy - 70 * s;
+    
+    // Slash arc
+    ctx.lineWidth = 3 * s;
+    for (var i = 0; i < 3; i++) {
+      ctx.globalAlpha = a * (0.7 - i * 0.2);
+      ctx.beginPath();
+      ctx.arc(cx + dir * punchDist, punchY, (15 + i * 12) * s, -Math.PI * 0.4, Math.PI * 0.4);
+      ctx.stroke();
+    }
+    
+    // Impact flash
+    if (punchProg > 0.5) {
+      ctx.globalAlpha = a * (1 - punchProg);
+      ctx.fillStyle = '#fff';
+      ctx.shadowBlur = 30 * s;
+      ctx.shadowColor = '#fff';
+      ctx.beginPath();
+      ctx.arc(cx + dir * punchDist, punchY, 10 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+  } else if (f.atkType === 'kick') {
+    // PHASE 6: Enhanced kick effect with motion trail
+    var kickProg = Math.min(1, age / 350);
+    var kickDist = 70 * s * kickProg;
+    var kickY = cy - 60 * s;
+    
+    // Circular impact burst
+    ctx.lineWidth = 4 * s;
+    for (var j = 0; j < 6; j++) {
+      var angle = (j / 6) * Math.PI * 2 + kickProg * Math.PI;
+      var len = (15 + j * 10) * s * (1 - kickProg * 0.4);
+      ctx.globalAlpha = a * (0.8 - j * 0.1);
+      ctx.beginPath();
+      ctx.moveTo(cx + dir * kickDist, kickY);
+      ctx.lineTo(cx + dir * kickDist + Math.cos(angle) * len, kickY + Math.sin(angle) * len);
+      ctx.stroke();
+    }
+    
+    // Speed lines (motion blur)
+    ctx.lineWidth = 2 * s;
+    for (var k = 0; k < 8; k++) {
+      var offset = k * 8 * s;
+      var yOffset = (k % 2) * 6 * s;
+      ctx.globalAlpha = a * (0.7 - k * 0.08);
+      ctx.beginPath();
+      ctx.moveTo(cx + dir * (kickDist - offset), kickY + yOffset);
+      ctx.lineTo(cx + dir * (kickDist - offset - 20 * s), kickY + yOffset);
+      ctx.stroke();
+    }
+    
+    // Impact particles
+    for (var m = 0; m < 10; m++) {
+      ctx.globalAlpha = a * (0.9 - m * 0.08);
+      var pAngle = (m / 10) * Math.PI * 2;
+      var pDist = (12 + m * 6) * s * kickProg;
+      ctx.beginPath();
+      ctx.arc(
+        cx + dir * kickDist + Math.cos(pAngle) * pDist,
+        kickY + Math.sin(pAngle) * pDist,
+        (2 + m * 0.3) * s,
+        0, Math.PI * 2
+      );
+      ctx.fill();
+    }
+    
+    // White flash at impact point
+    if (kickProg > 0.6) {
+      ctx.globalAlpha = a * (1 - kickProg) * 2;
+      ctx.fillStyle = '#fff';
+      ctx.shadowBlur = 40 * s;
+      ctx.shadowColor = '#fff';
+      ctx.beginPath();
+      ctx.arc(cx + dir * kickDist, kickY, 15 * s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+  } else if (f.atkType === 'special') {
+    // PHASE 6: Enhanced special attack with energy rings
+    var t2 = now / 1000;
+    var specialY = cy - 60 * s;
+    
+    // Pulsing energy rings
+    for (var k = 0; k < 4; k++) {
+      ctx.globalAlpha = a * (0.6 - k * 0.12);
+      ctx.lineWidth = (3 - k * 0.5) * s;
+      var ringSize = (30 + k * 20) * s + Math.sin(t2 * 5 + k) * 5 * s;
+      ctx.beginPath();
+      ctx.arc(cx, specialY, ringSize, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    
+    // Energy particles
+    for (var ep = 0; ep < 12; ep++) {
+      var epAngle = (ep / 12) * Math.PI * 2 + t2 * 2;
+      var epDist = 40 * s + Math.sin(t2 * 3 + ep) * 10 * s;
+      ctx.globalAlpha = a * 0.8;
+      ctx.beginPath();
+      ctx.arc(
+        cx + Math.cos(epAngle) * epDist,
+        specialY + Math.sin(epAngle) * epDist,
+        3 * s,
+        0, Math.PI * 2
+      );
+      ctx.fill();
+    }
+    
+  } else if (f.atkType === 'ultimate') {
+    // PHASE 6: Ultimate attack with massive energy burst
+    var ultY = cy - 60 * s;
+    
+    // Massive expanding ring
+    ctx.lineWidth = 5 * s;
+    ctx.globalAlpha = a * 0.8;
+    ctx.beginPath();
+    ctx.arc(cx, ultY, 60 * s * (1 - a), 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Inner glow
+    ctx.globalAlpha = a;
+    ctx.fillStyle = f.glow;
+    ctx.shadowBlur = 50 * s;
+    ctx.beginPath();
+    ctx.arc(cx, ultY, 30 * s, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Energy rays
+    for (var ur = 0; ur < 12; ur++) {
+      var rayAngle = (ur / 12) * Math.PI * 2;
+      var rayLen = 80 * s * (1 - a);
+      ctx.globalAlpha = a * 0.6;
+      ctx.lineWidth = 3 * s;
+      ctx.beginPath();
+      ctx.moveTo(cx, ultY);
+      ctx.lineTo(cx + Math.cos(rayAngle) * rayLen, ultY + Math.sin(rayAngle) * rayLen);
+      ctx.stroke();
+    }
+  }
+  
+  ctx.restore();
+}
+
+function drawProj(proj, glow, sc) {
+  ctx.save();
+  ctx.fillStyle = glow; ctx.shadowBlur = 28; ctx.shadowColor = glow;
+  ctx.beginPath(); ctx.arc(proj.x, proj.y, 11*sc, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function showBanner(txt) {
+  var b = document.getElementById('rbanner');
+  b.style.transition = 'none';
+  b.style.opacity    = '1';
+  b.innerHTML = '<div class="rtext">' + txt + '</div>';
+  setTimeout(function(){
+    b.style.transition = 'opacity 0.5s';
+    b.style.opacity    = '0';
+  }, 1300);
+}
+
+function endFight(result) {
+  if (!gameRunning) return;
+  gameRunning = false;
+  clearInterval(gameTimer);
+  var win = result === 'win';
+  
+  // Track fight duration
+  var fightDuration = 60 + actIdx * 5 - timeLeft;
+  
+  // Award coins for winning
+  if (win) {
+    var coinReward = 50 + actIdx * 25;
+    var isPerfect = player.hp === player.maxHp;
+    var skillPointsEarned = 0;
+    
+    if (isPerfect) {
+      coinReward *= 2; // Perfect bonus
+      playerData.stats.perfectWins++;
+      skillPointsEarned += 1; // NEW: Skill point for perfect win
+    }
+    
+    // NEW: Survival mode handling
+    if (isSurvival) {
+      survivalKills++;
+      document.getElementById('survivalKills').textContent = survivalKills;
+      
+      // Update high score
+      if (survivalKills > (playerData.survivalHighScore || 0)) {
+        playerData.survivalHighScore = survivalKills;
+        document.getElementById('survivalHighScore').textContent = survivalKills;
+      }
+      if (survivalWave > (playerData.survivalHighWave || 0)) {
+        playerData.survivalHighWave = survivalWave;
+      }
+      
+      // Continue to next wave
+      survivalWave++;
+      document.getElementById('survivalWave').textContent = survivalWave;
+      actIdx = Math.min(24, Math.floor(survivalWave / 2)); // Increase difficulty
+      
+      // Heal player slightly between waves
+      player.hp = Math.min(player.maxHp, player.hp + 20);
+      
+      savePlayerData();
+      
+      // Start next wave after delay
+      setTimeout(function(){
+        showBanner('WAVE ' + survivalWave);
+        setTimeout(function(){
+          initGame();
+          gameRunning = true;
+          lastT = performance.now();
+          requestAnimationFrame(loop);
+        }, 1000);
+      }, 2000);
+      return;
+    }
+    
+    playerData.coins += coinReward;
+    playerData.stats.wins++;
+    playerData.stats.totalCoins += coinReward;
+    
+    // NEW: Skill points for milestones
+    if (playerData.stats.wins % 5 === 0) {
+      skillPointsEarned += 1;
+    }
+    if (player.comboCount >= 10) {
+      skillPointsEarned += 1;
+    }
+    
+    playerData.skillPoints += skillPointsEarned;
+    
+    // Track fastest win
+    if (playerData.stats.fastestWin === 999 || fightDuration < playerData.stats.fastestWin) {
+      playerData.stats.fastestWin = fightDuration;
+    }
+    
+    // Track acts completed
+    if (actIdx + 1 > playerData.stats.actsCompleted) {
+      playerData.stats.actsCompleted = actIdx + 1;
+    }
+    
+    // Track highest combo
+    if (player.comboCount > playerData.stats.highestCombo) {
+      playerData.stats.highestCombo = player.comboCount;
+    }
+    
+    // NEW: Check daily challenges
+    checkDailyChallenges(fightDuration, isPerfect);
+    
+    savePlayerData();
+    
+    // Check for achievements
+    checkAchievements();
+    
+    if (sounds && sounds.victory) sounds.victory();
+    if (sounds && sounds.coin) setTimeout(function(){ sounds.coin(); }, 500);
+  } else {
+    playerData.stats.losses++;
+    
+    // NEW: Survival mode game over
+    if (isSurvival) {
+      document.getElementById('survivalHUD').style.display = 'none';
+      rageModeActive = false;
+    }
+    
+    savePlayerData();
+  }
+  
+  if (win && actIdx + 1 < ACTS.length && !isSurvival) {
+    ACTS[actIdx+1].unlocked = true;
+    buildGrid();
+  }
+  
+  setTimeout(function(){
+    var rt = document.getElementById('rtitle');
+    var rs = document.getElementById('rsub');
+    var nb = document.getElementById('rnext');
+    if (win) {
+      rt.textContent = 'VICTORY'; rt.className = 'rtitle win';
+      var rewardText = ACTS[actIdx].boss + ' DEFEATED - +' + coinReward + ' COINS';
+      if (skillPointsEarned > 0) {
+        rewardText += ' +' + skillPointsEarned + ' 🌟';
+      }
+      rs.textContent = rewardText;
+      nb.style.display = (actIdx+1 < ACTS.length && !isSurvival) ? 'block' : 'none';
+    } else {
+      rt.textContent = 'DEFEATED'; rt.className = 'rtitle lose';
+      rs.textContent = 'TRY AGAIN, WARRIOR';
+      nb.style.display = 'none';
+    }
+    setScreen('resultScreen');
+    updateCoinDisplay();
+  }, 650);
+}
+
+function nextFight()  { actIdx++; startFight(); }
+function retryFight() { startFight(); }
+
+function showShop() {
+  setScreen('shopScreen');
+  updateCoinDisplay();
+  document.getElementById('shopCoins').textContent = playerData.coins;
+  buildShop();
+}
+
+function buildShop() {
+  // Build Weapons
+  var weaponGrid = document.getElementById('weaponGrid');
+  weaponGrid.innerHTML = '';
+  for (var wKey in WEAPONS) {
+    (function(key, weapon) {
+      var owned = playerData['weap_'+key] || key === 'fists';
+      var selected = playerData.selectedWeapon === key;
+      
+      var card = document.createElement('div');
+      card.className = 'acard' + (owned ? '' : ' locked');
+      card.style.background = selected ? 'linear-gradient(135deg,#1a3300,#2a5500)' : 'linear-gradient(135deg,#0d0015,#1a0030)';
+      card.style.borderColor = selected ? '#88ff44' : '#6600cc33';
+      
+      card.innerHTML = 
+        '<div style="font-size:2rem;">' + weapon.icon + '</div>' +
+        '<div class="aname">' + weapon.name + '</div>' +
+        '<div style="color:#aaa;font-size:0.7rem;margin:0.3rem 0;">DMG:' + (weapon.damage*100).toFixed(0) + '% RNG:' + (weapon.range*100).toFixed(0) + '%</div>' +
+        '<div style="color:' + (owned ? '#88ff44' : '#ffdd00') + ';font-size:0.8rem;margin-top:0.3rem;">' + 
+        (owned ? (selected ? '✓ EQUIPPED' : 'OWNED') : weapon.cost + ' 💰') + '</div>';
+      
+      if (owned && !selected) {
+        card.onclick = function() {
+          playerData.selectedWeapon = key;
+          savePlayerData();
+          buildShop();
+        };
+      } else if (!owned) {
+        card.onclick = function() {
+          if (playerData.coins >= weapon.cost) {
+            playerData.coins -= weapon.cost;
+            playerData['weap_'+key] = true;
+            playerData.selectedWeapon = key;
+            savePlayerData();
+            if (sounds && sounds.coin) sounds.coin();
+            buildShop();
+            checkAchievements(); // Check for shopaholic achievement
+          } else {
+            alert('Not enough coins! Need ' + weapon.cost + ' coins.');
+          }
+        };
+      }
+      
+      weaponGrid.appendChild(card);
+    })(wKey, WEAPONS[wKey]);
+  }
+  
+  // Build Upgrades
+  var upgradeGrid = document.getElementById('upgradeGrid');
+  upgradeGrid.innerHTML = '';
+  var upgrades = [
+    {key:'attack', name:'Attack', icon:'⚔️', cost:100, max:10},
+    {key:'defense', name:'Defense', icon:'🛡️', cost:100, max:10},
+    {key:'speed', name:'Speed', icon:'⚡', cost:150, max:10},
+    {key:'energy', name:'Energy Regen', icon:'✨', cost:200, max:10}
+  ];
+  
+  upgrades.forEach(function(upg) {
+    var level = playerData.upgrades[upg.key] || 0;
+    var maxed = level >= upg.max;
+    
+    var card = document.createElement('div');
+    card.className = 'acard';
+    card.style.background = maxed ? 'linear-gradient(135deg,#1a1a00,#3a3a00)' : 'linear-gradient(135deg,#0d0015,#1a0030)';
+    
+    card.innerHTML = 
+      '<div style="font-size:1.5rem;">' + upg.icon + '</div>' +
+      '<div class="aname">' + upg.name + '</div>' +
+      '<div style="color:#88ff44;font-size:0.9rem;margin:0.3rem 0;">Level ' + level + '/' + upg.max + '</div>' +
+      '<div style="color:' + (maxed ? '#888' : '#ffdd00') + ';font-size:0.8rem;">' + 
+      (maxed ? 'MAX LEVEL' : upg.cost + ' 💰') + '</div>';
+    
+    if (!maxed) {
+      card.onclick = function() {
+        if (playerData.coins >= upg.cost) {
+          playerData.coins -= upg.cost;
+          playerData.upgrades[upg.key]++;
+          savePlayerData();
+          if (sounds && sounds.coin) sounds.coin();
+          buildShop();
+        } else {
+          alert('Not enough coins! Need ' + upg.cost + ' coins.');
+        }
+      };
+    }
+    
+    upgradeGrid.appendChild(card);
+  });
+  
+  // Build Characters
+  var characterGrid = document.getElementById('characterGrid');
+  characterGrid.innerHTML = '';
+  for (var cKey in CHARACTERS) {
+    (function(key, char) {
+      var owned = playerData['char_'+key] || key === 'shadow';
+      var selected = playerData.selectedCharacter === key;
+      
+      var card = document.createElement('div');
+      card.className = 'acard' + (owned ? '' : ' locked');
+      card.style.background = selected ? 'linear-gradient(135deg,#1a3300,#2a5500)' : 'linear-gradient(135deg,#0d0015,#1a0030)';
+      card.style.borderColor = selected ? '#88ff44' : '#6600cc33';
+      
+      card.innerHTML = 
+        '<div style="width:40px;height:40px;background:' + char.color + ';border-radius:50%;margin:0.3rem auto;box-shadow:0 0 10px ' + char.glow + ';"></div>' +
+        '<div class="aname">' + char.name + '</div>' +
+        '<div style="color:#aaa;font-size:0.65rem;margin:0.2rem 0;">HP:' + char.hp + ' ATK:' + char.atk + ' SPD:' + (char.spd*100).toFixed(0) + '%</div>' +
+        '<div style="color:' + (owned ? '#88ff44' : '#ffdd00') + ';font-size:0.8rem;margin-top:0.3rem;">' + 
+        (owned ? (selected ? '✓ SELECTED' : 'OWNED') : char.cost + ' 💰') + '</div>';
+      
+      if (owned && !selected) {
+        card.onclick = function() {
+          playerData.selectedCharacter = key;
+          savePlayerData();
+          buildShop();
+        };
+      } else if (!owned) {
+        card.onclick = function() {
+          if (playerData.coins >= char.cost) {
+            playerData.coins -= char.cost;
+            playerData['char_'+key] = true;
+            playerData.selectedCharacter = key;
+            savePlayerData();
+            if (sounds && sounds.coin) sounds.coin();
+            buildShop();
+            checkAchievements(); // Check for shopaholic achievement
+          } else {
+            alert('Not enough coins! Need ' + char.cost + ' coins.');
+          }
+        };
+      }
+      
+      characterGrid.appendChild(card);
+    })(cKey, CHARACTERS[cKey]);
+  }
+  
+  document.getElementById('shopCoins').textContent = playerData.coins;
+}
+
+function showAchievements() {
+  setScreen('achievementsScreen');
+  buildAchievements();
+}
+
+function buildAchievements() {
+  var grid = document.getElementById('achievementGrid');
+  grid.innerHTML = '';
+  
+  var unlockedCount = 0;
+  
+  for (var i = 0; i < ACHIEVEMENTS.length; i++) {
+    var ach = ACHIEVEMENTS[i];
+    var unlocked = playerData.achievements.indexOf(ach.id) !== -1;
+    if (unlocked) unlockedCount++;
+    
+    var card = document.createElement('div');
+    card.className = 'acard' + (unlocked ? '' : ' locked');
+    card.style.background = unlocked ? 'linear-gradient(135deg,#1a3300,#2a5500)' : 'linear-gradient(135deg,#0d0015,#1a0030)';
+    card.style.borderColor = unlocked ? '#88ff44' : '#6600cc33';
+    
+    card.innerHTML = 
+      '<div style="font-size:2rem;margin:0.5rem 0;">' + (unlocked ? '🏆' : '🔒') + '</div>' +
+      '<div class="aname">' + ach.name + '</div>' +
+      '<div style="color:#aaa;font-size:0.75rem;margin:0.5rem 0;min-height:2.5rem;">' + ach.desc + '</div>' +
+      '<div style="color:' + (unlocked ? '#88ff44' : '#ffdd00') + ';font-size:0.85rem;">' + 
+      (unlocked ? '✓ UNLOCKED' : '+' + ach.reward + ' 💰') + '</div>';
+    
+    grid.appendChild(card);
+  }
+  
+  document.getElementById('achCount').textContent = unlockedCount;
+  document.getElementById('achTotal').textContent = ACHIEVEMENTS.length;
+}
+
+function checkAchievements() {
+  for (var i = 0; i < ACHIEVEMENTS.length; i++) {
+    var ach = ACHIEVEMENTS[i];
+    // Skip if already unlocked
+    if (playerData.achievements.indexOf(ach.id) !== -1) continue;
+    
+    // Check if achievement condition is met
+    if (ach.check()) {
+      // Unlock achievement
+      playerData.achievements.push(ach.id);
+      playerData.coins += ach.reward;
+      savePlayerData();
+      showAchievementPopup(ach);
+    }
+  }
+}
+
+// NEW: Check Daily Challenges
+function checkDailyChallenges(fightDuration, isPerfect) {
+  if (!playerData.dailyChallenges) return;
+  
+  playerData.dailyChallenges.forEach(function(challenge) {
+    if (challenge.completed) return;
+    
+    var completed = false;
+    
+    switch(challenge.id) {
+      case 'perfectWin':
+        if (isPerfect) completed = true;
+        break;
+      case 'fastWin':
+        if (fightDuration < 30) completed = true;
+        break;
+      case 'comboChallenge':
+        if (player.comboCount >= 10) completed = true;
+        break;
+      case 'survivalWaves':
+        if (isSurvival && survivalWave >= 5) completed = true;
+        break;
+      case 'multiKills':
+        challenge.progress++;
+        if (challenge.progress >= challenge.target) completed = true;
+        break;
+    }
+    
+    if (completed) {
+      challenge.completed = true;
+      playerData.coins += challenge.reward;
+      showBanner('CHALLENGE COMPLETE! +' + challenge.reward + ' 💰');
+      savePlayerData();
+    }
+  });
+}
+
+function showAchievementPopup(achievement) {
+  var popup = document.getElementById('achievementPopup');
+  document.getElementById('achPopupName').textContent = achievement.name;
+  document.getElementById('achPopupDesc').textContent = achievement.desc;
+  document.getElementById('achPopupReward').textContent = '+' + achievement.reward + ' 💰';
+  
+  // Show popup with animation
+  popup.style.opacity = '1';
+  popup.style.transform = 'translateX(0)';
+  
+  // Play sound
+  if (sounds && sounds.victory) sounds.victory();
+  
+  // Hide after 4 seconds
+  setTimeout(function() {
+    popup.style.opacity = '0';
+    popup.style.transform = 'translateX(400px)';
+  }, 4000);
+}
+
+window.addEventListener('keydown', function(e){
+  keys[e.key] = true;
+  var prev = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '];
+  for (var i = 0; i < prev.length; i++) {
+    if (e.key === prev[i]) { e.preventDefault(); break; }
+  }
+});
+window.addEventListener('keyup', function(e){ keys[e.key] = false; });
+
+var mids = ['mL','mR','mJ','mC','mP','mK','mS'];
+for (var mi = 0; mi < mids.length; mi++) {
+  (function(id){
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    btn.addEventListener('touchstart', function(e){ e.preventDefault(); keys[id]=true;  }, {passive:false});
+    btn.addEventListener('touchend',   function(e){ e.preventDefault(); keys[id]=false; }, {passive:false});
+    btn.addEventListener('mousedown',  function(){ keys[id]=true;  });
+    btn.addEventListener('mouseup',    function(){ keys[id]=false; });
+    btn.addEventListener('mouseleave', function(){ keys[id]=false; });
+  })(mids[mi]);
+}
+
+// boot bg
+keys = {};
+(function(){
+  var sg = ctx.createLinearGradient(0,0,0,H);
+  sg.addColorStop(0,'#04000e'); sg.addColorStop(0.55,'#090018'); sg.addColorStop(1,'#0e0004');
+  ctx.fillStyle = sg; ctx.fillRect(0,0,W,H);
+})();
+</script>
+</body>
+</html>
