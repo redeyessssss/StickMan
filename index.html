@@ -252,7 +252,7 @@ canvas { position:absolute; top:0; left:0; display:block; }
   </div>
 
   <!-- STORY -->
-  <div class="screen hidden" id="storyScreen" style="overflow-y:auto;padding:1rem 0;">
+  <div class="screen hidden" id="storyScreen" style="overflow-y:auto;padding:1rem 0;scroll-behavior:smooth;">
     <div class="stitle">Story Mode</div>
     <div class="ssub">CLOSE THE GATES OF DARKNESS</div>
     <div style="color:#ffaa44;font-size:0.9rem;margin:0.5rem 0;">Progress: <span id="actProgress">0</span>/25 Acts</div>
@@ -824,10 +824,26 @@ function setScreen(id) {
     document.getElementById(ids[si]).classList.add('hidden');
   }
   document.getElementById(id).classList.remove('hidden');
+  
+  // Reset scroll position for scrollable screens
+  var scrollableScreens = ['storyScreen', 'shopScreen', 'achievementsScreen', 'skillTreeScreen', 'rulesScreen', 'statsScreen', 'dailyChallengesScreen'];
+  if (scrollableScreens.indexOf(id) !== -1) {
+    setTimeout(function() {
+      var screen = document.getElementById(id);
+      if (screen) screen.scrollTop = 0;
+    }, 50);
+  }
 }
 
 function showMenu()   { setScreen('menuScreen');  gameRunning = false; updateCoinDisplay(); }
-function showStory()  { setScreen('storyScreen'); }
+function showStory()  { 
+  setScreen('storyScreen'); 
+  // Scroll to top on mobile
+  setTimeout(function() {
+    var storyScreen = document.getElementById('storyScreen');
+    if (storyScreen) storyScreen.scrollTop = 0;
+  }, 50);
+}
 
 // NEW: Show Skill Tree
 function showSkillTree() {
